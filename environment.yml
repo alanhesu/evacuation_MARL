@@ -74,16 +74,21 @@ dependencies:
   - zstd=1.4.9=haebb681_0
   - pip:
     - ale-py==0.7.4
+    - cffi==1.15.0
     - cloudpickle==2.0.0
-    - gym==0.23.1
+    - gym==0.21.0
     - gym-notices==0.0.6
     - importlib-resources==5.6.0
     - joblib==1.1.0
     - opencv-python==3.4.17.63
     - pandas==1.4.2
     - pettingzoo==1.17.0
+    - pycparser==2.21
     - pygame==2.1.0
+    - pymunk==6.2.1
     - pytz==2022.1
-    - stable-baselines==2.10.2
-    - supersuit==3.3.5
+    - stable-baselines3==1.5.0
+    - supersuit==3.2.0
+    - torch==1.11.0
+    - typing-extensions==4.1.1
 prefix: /home/alanhesu/miniconda3/envs/cs7649_proj
