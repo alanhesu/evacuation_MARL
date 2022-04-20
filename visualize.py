@@ -4,7 +4,7 @@ from pettingzoo.butterfly import pistonball_v6
 import supersuit as ss
 import os
 
-os.environ["SDL_VIDEODRIVER"] = "dummy"
+# os.environ["SDL_VIDEODRIVER"] = "dummy"
 
 # Rendering
 env = pistonball_v6.env()
