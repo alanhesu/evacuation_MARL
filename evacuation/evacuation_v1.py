@@ -107,6 +107,8 @@ class raw_env(AECEnv, EzPickle):
                 max_cycles = const.MAX_CYCLES
         )
 
+        pg.init()
+
         self.agents = []
         self.max_cycles = max_cycles
 
@@ -211,8 +213,8 @@ class raw_env(AECEnv, EzPickle):
         return state
 
     def step(self, action):
-        if self.dones[self.agent_selection]:
-            return self._was_done_step(action)
+        # if self.dones[self.agent_selection]:
+            # return self._was_done_step(action)
         agent_id = self.agent_selection
         all_agents_updated = self._agent_selector.is_last()
         self.rewards = {agent: 0 for agent in self.agents}
@@ -229,12 +231,16 @@ class raw_env(AECEnv, EzPickle):
         if self.frame == self.max_cycles:
             self.dones = dict(zip(self.agents, [True for _ in self.agents]))
 
+        if (self.rendering):
+            pg.event.pump()
+
         self.agent_selection = self._agent_selector.next()
         self._cumulative_rewards[agent_id] = 0
         self._accumulate_rewards()
-        self._dones_step_first()
+        # self._dones_step_first()
 
     def reset(self):
+        self.screen = pg.Surface(const.SCREEN_SIZE)
         self.done = False
 
         self.space = copy.deepcopy(self.space_init)
@@ -256,11 +262,39 @@ class raw_env(AECEnv, EzPickle):
     def render(self, mode='human'):
         if mode == 'human':
             print(self.space)
+            if not self.rendering:
+                self.rendering = True
+                pg.display.init()
+                self.screen = pg.Surface((const.MAP_WIDTH, const.MAP_HEIGHT))
+                self.display_screen = pg.display.set_mode(const.SCREEN_SIZE)
+
+            self.screen.fill((255, 255, 255))
+            for r in range(0, const.MAP_HEIGHT):
+                for c in range(0, const.MAP_WIDTH):
+                    if (self.space[r,c] == Objects.WALL):
+                        color = (128, 128, 128)
+                    elif (self.space[r,c] == Objects.PERSON):
+                        color = (0, 0, 255)
+                    elif (self.space[r,c] == Objects.ROBOT):
+                        color = (0, 255, 0)
+                    elif (self.space[r,c] == Objects.EXIT):
+                        color = (255, 0, 0)
+                    else:
+                        color = (255, 255, 255)
+                    self.screen.set_at((c, r), color)
+
+            # scale up to display size
+            scaled_win = pg.transform.scale(self.screen, self.display_screen.get_size())
+            self.display_screen.blit(scaled_win, (0, 0))
+            pg.display.flip()
 
     def close(self):
         if not self.closed:
             self.closed = True
-            # if self.rendering:
+            if self.rendering:
+                pg.event.pump()
+                pg.display.quit()
+            pg.quit()
 
     def _randpos(self, num):
         # generate a series of random positions to spawn in empty spots

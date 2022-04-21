@@ -1,5 +1,7 @@
 import math
 
+SCREEN_SIZE = (600, 600)
+
 MAP_HEIGHT = 7
 MAP_WIDTH = 7
 FPS = 4
