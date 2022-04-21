@@ -132,7 +132,6 @@ class raw_env(AECEnv, EzPickle):
         self.space = np.zeros((const.MAP_HEIGHT, const.MAP_WIDTH), dtype='uint8')
         #TODO: initialize walls
 
-        #TODO: initialize exits
         # randomly generate exit locations
         def randexit():
             side = self.rng.randint(4)

@@ -4,7 +4,7 @@ from pettingzoo.butterfly import knights_archers_zombies_v9, pistonball_v6
 import supersuit as ss
 import evacuation_v1
 
-env = evacuation_v1.env(despawn=False)
+env = evacuation_v1.parallel_env(despawn=False)
 # env = pistonball_v6.env()
 env = ss.black_death_v2(env)
 env = ss.pettingzoo_env_to_vec_env_v0(env)
