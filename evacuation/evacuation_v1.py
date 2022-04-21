@@ -100,16 +100,19 @@ parallel_env = parallel_wrapper_fn(env)
 class raw_env(AECEnv, EzPickle):
     def __init__(
             self,
+            despawn=True,
             max_cycles = const.MAX_CYCLES
     ):
         EzPickle.__init__(
                 self,
-                max_cycles = const.MAX_CYCLES
+                despawn,
+                max_cycles
         )
 
         pg.init()
 
         self.agents = []
+        self.despawn = despawn
         self.max_cycles = max_cycles
 
         self.seed()
@@ -213,8 +216,9 @@ class raw_env(AECEnv, EzPickle):
         return state
 
     def step(self, action):
-        # if self.dones[self.agent_selection]:
-            # return self._was_done_step(action)
+        if (self.despawn):
+            if self.dones[self.agent_selection]:
+                return self._was_done_step(action)
         agent_id = self.agent_selection
         all_agents_updated = self._agent_selector.is_last()
         self.rewards = {agent: 0 for agent in self.agents}
@@ -237,7 +241,8 @@ class raw_env(AECEnv, EzPickle):
         self.agent_selection = self._agent_selector.next()
         self._cumulative_rewards[agent_id] = 0
         self._accumulate_rewards()
-        # self._dones_step_first()
+        if (self.despawn):
+            self._dones_step_first()
 
     def reset(self):
         self.screen = pg.Surface(const.SCREEN_SIZE)
@@ -261,7 +266,7 @@ class raw_env(AECEnv, EzPickle):
 
     def render(self, mode='human'):
         if mode == 'human':
-            print(self.space)
+            # print(self.space)
             if not self.rendering:
                 self.rendering = True
                 pg.display.init()

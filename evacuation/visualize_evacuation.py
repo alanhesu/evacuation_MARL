@@ -14,6 +14,7 @@ model = PPO.load("evac_policy")
 env.reset()
 for agent in env.agent_iter():
     obs, reward, done, info = env.last()
+    print(reward)
     act = model.predict(obs, deterministic=True)[0] if not done else None
     env.step(act)
     env.render()

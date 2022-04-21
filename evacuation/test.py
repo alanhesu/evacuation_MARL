@@ -1,5 +1,5 @@
 from pettingzoo.test import performance_benchmark, test_save_obs, api_test, parallel_api_test, seed_test, max_cycles_test, render_test, bombardment_test, state_test
-from pettingzoo.butterfly import pistonball_v6, prospector_v4
+from pettingzoo.butterfly import pistonball_v6, prospector_v4, knights_archers_zombies_v9
 from pettingzoo.magent import battlefield_v4, gather_v4, battle_v3
 from pettingzoo.utils import random_demo
 import evacuation_v1
