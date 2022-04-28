@@ -18,15 +18,15 @@ from pettingzoo.utils.conversions import parallel_wrapper_fn
 import constants as const
 
 class Directions(IntEnum):
-    UP = auto()
-    UPRIGHT = auto()
-    RIGHT = auto()
-    DOWNRIGHT = auto()
-    DOWN = auto()
-    DOWNLEFT = auto()
-    LEFT = auto()
-    UPLEFT = auto()
-    STAY = auto()
+    UP = 1
+    UPRIGHT = 2
+    RIGHT = 3
+    DOWNRIGHT = 4
+    DOWN = 5
+    DOWNLEFT = 6
+    LEFT = 7
+    UPLEFT = 8
+    STAY = 0
 
 class Objects(IntEnum):
     EMPTY = 0
@@ -72,7 +72,7 @@ class Robot():
             # check out of bounds
             reward = const.OOB_PENALTY
         elif (space[tuple(newpos.astype(int))] != Objects.EMPTY):
-            # check collision
+            # c
             if (space[tuple(newpos.astype(int))] == Objects.EXIT):
                 reward = const.EXIT_REWARD
                 space[tuple(self.position.astype(int))] = Objects.EMPTY
@@ -213,6 +213,14 @@ class raw_env(AECEnv, EzPickle):
         return state
 
     def step(self, action):
+        '''
+        step(action) takes in an action for each agent and should return the
+        - observations
+        - rewards
+        - dones
+        - infos
+        dicts where each dict looks like {agent_1: item_1, agent_2: item_2}
+        '''
         # if self.dones[self.agent_selection]:
             # return self._was_done_step(action)
         agent_id = self.agent_selection
@@ -240,6 +248,15 @@ class raw_env(AECEnv, EzPickle):
         # self._dones_step_first()
 
     def reset(self):
+        '''
+        Reset needs to initialize the `agents` attribute and must set up the
+        environment so that render(), and step() can be called without issues.
+
+        Here it initializes the `num_moves` variable which counts the number of
+        hands that are played.
+
+        Returns the observations for each agent
+        '''
         self.screen = pg.Surface(const.SCREEN_SIZE)
         self.done = False
 
@@ -260,6 +277,10 @@ class raw_env(AECEnv, EzPickle):
         self.agent_selection = self._agent_selector.next()
 
     def render(self, mode='human'):
+        '''
+        Renders the environment. In human mode, it can print to terminal, open
+        up a graphical window, or open up some other display that a human can see and understand.
+        '''
         if mode == 'human':
             print(self.space)
             if not self.rendering:
@@ -289,6 +310,11 @@ class raw_env(AECEnv, EzPickle):
             pg.display.flip()
 
     def close(self):
+        '''
+        Close should release any graphical displays, subprocesses, network connections
+        or any other environment data which should not be kept around after the
+        user is no longer using the environment.
+        '''
         if not self.closed:
             self.closed = True
             if self.rendering:
