@@ -79,12 +79,18 @@ class Robot():
                 done = True
             else:
                 reward = const.WALL_PENALTY
+                reward = 0
         else:
             # move normally
             reward = const.MOVE_PENALTY
+            reward = 0
             space[tuple(self.position.astype(int))] = Objects.EMPTY
             space[tuple(newpos.astype(int))] = Objects.ROBOT
             self.position = newpos
+
+        #debug add distance to goal to reward
+        dist = np.abs(np.sum(self.position - np.array([0, 2]))) + 1e-12
+        # reward += 1/dist
 
         return reward, done
 
@@ -130,7 +136,14 @@ class raw_env(AECEnv, EzPickle):
 
         # initialize space
         self.space = np.zeros((const.MAP_HEIGHT, const.MAP_WIDTH), dtype='uint8')
+
         #TODO: initialize walls
+        for r in range(0, const.MAP_HEIGHT):
+            for c in range(0, const.MAP_WIDTH):
+                if (r == 0 or c == 0
+                    or r == const.MAP_HEIGHT-1
+                    or c == const.MAP_WIDTH-1):
+                    self.space[r,c] = Objects.WALL
 
         # randomly generate exit locations
         def randexit():
@@ -151,12 +164,14 @@ class raw_env(AECEnv, EzPickle):
             return pos
 
         num = 0
-        while num < const.NUM_EXITS:
-            pos = randexit()
-            if (self.space[pos[0]] != Objects.EXIT or self.space[pos[1]] != Objects.EXIT):
-                num += 1
-                self.space[pos[0]] = Objects.EXIT
-                self.space[pos[1]] = Objects.EXIT
+        # while num < const.NUM_EXITS:
+            # pos = randexit()
+            # if (self.space[pos[0]] != Objects.EXIT or self.space[pos[1]] != Objects.EXIT):
+                # num += 1
+                # self.space[pos[0]] = Objects.EXIT
+                # self.space[pos[1]] = Objects.EXIT
+        self.space[0,1] = Objects.EXIT
+        self.space[0,2] = Objects.EXIT
 
         self.space_init = copy.deepcopy(self.space)
 
@@ -188,6 +203,9 @@ class raw_env(AECEnv, EzPickle):
         self._agent_selector = agent_selector(self.agents)
         self.agent_selection = self._agent_selector.next()
         self.reset()
+
+        print('initial state:')
+        print(self.space)
 
     def seed(self, seed=None):
         self.rng, seed = seeding.np_random(seed)

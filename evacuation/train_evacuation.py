@@ -8,9 +8,9 @@ env = evacuation_v1.parallel_env(despawn=False)
 # env = pistonball_v6.env()
 env = ss.black_death_v2(env)
 env = ss.pettingzoo_env_to_vec_env_v0(env)
-env = ss.concat_vec_envs_v0(env, 8, num_cpus=4, base_class='stable_baselines3')
-model = PPO('MlpPolicy', env, verbose=3)
-model.learn(total_timesteps=20000)
+env = ss.concat_vec_envs_v0(env, 8, num_cpus=1, base_class='stable_baselines3')
+model = PPO('MlpPolicy', env, verbose=3, learning_rate=0.1e-5, n_steps=512, batch_size=256)
+model.learn(total_timesteps=4e6)
 model.save("evac_policy1")
 
 # Rendering
