@@ -6,12 +6,12 @@ import supersuit as ss
 import evacuation_v1
 import numpy as np
 
-env = evacuation_v1.env()
+env = evacuation_v1.env(despawn=False)
 # env = ss.color_reduction_v0(env, mode='B')
 # env = ss.resize_v0(env, x_size=84, y_size=84)
 # env = ss.frame_stack_v1(env, 3)
 
-model = DQN.load("evac_policy1", despawn=False)
+model = DQN.load("evac_policy1")
 
 all_steps = []
 for i in range(0, 10):
@@ -24,7 +24,10 @@ for i in range(0, 10):
         print(reward, act)
         env.render()
         time.sleep(0.05)
-        steps += 1
+        if (not done):
+            steps += 1
+        if (all(value for value in env.dones.values())):
+            break
 
     all_steps.append(steps)
     print('steps: {}'.format(steps))
