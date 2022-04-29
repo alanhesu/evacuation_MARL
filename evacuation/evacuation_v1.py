@@ -69,20 +69,20 @@ class Person:
 
                     # Get line from person to robot (idx 0 is y, idx 1 is x)
                     m = (robot_pos[0] - self.position[0]) / (
-                        robot_pos[1] - self.position[1]
+                        robot_pos[1] - self.position[1] + 1e-12
                     )
-                    b = robot_pos[0]
+                    b = robot_pos[0] - m*robot_pos[1]
 
                     a = -m
                     c = -b
                     b = 1
 
-                    for k in range(space.shape[0]):
-                        for l in range(space.shape[1]):
+                    for k in range(min([robot_pos[0], self.position[0]]), max([robot_pos[0], self.position[0]])+1):
+                        for l in range(min([robot_pos[1], self.position[1]]), max([robot_pos[1], self.position[1]])+1):
                             if space[k][l] == Objects.WALL:
                                 d = abs(a * l + b * k + c) / ((a ** 2 + b ** 2) ** 0.5)
 
-                                if d < (2 ** 0.5 - 0.01):
+                                if d < (2 ** 0.5/2 - 0.01):
                                     failure = True
                                     break
                             if failure:
@@ -113,7 +113,7 @@ class Person:
 
                     # Get line from person to exit (idx 0 is y, idx 1 is x)
                     m = (exit_pos[0] - self.position[0]) / (
-                        exit_pos[1] - self.position[1]
+                        exit_pos[1] - self.position[1] + 1e-12
                     )
                     b = exit_pos[0]
 
@@ -121,8 +121,8 @@ class Person:
                     c = -b
                     b = 1
 
-                    for k in range(space.shape[0]):
-                        for l in range(space.shape[1]):
+                    for k in range(min([exit_pos[0], self.position[0]]), max([exit_pos[0], self.position[0]])+1):
+                        for l in range(min([exit_pos[1], self.position[1]]), max([exit_pos[1], self.position[1]])+1):
                             if space[k][l] == Objects.WALL:
                                 d = abs(a * l + b * k + c) / ((a ** 2 + b ** 2) ** 0.5)
 
@@ -176,7 +176,7 @@ class Person:
                     robot_new_poses.append(new_pos)
 
                     # Get change in distance to robot
-                    robot_delta_dists.append(get_distance(new_pos, robot_pos))
+                    robot_delta_dists.append(get_distance(new_pos, robot_pos) - get_distance(self.position, robot_pos))
 
         exit_actions = []
         exit_delta_dists = []
@@ -209,7 +209,7 @@ class Person:
                     exit_new_poses.append(new_pos)
 
                     # Get change in distance to exit
-                    exit_delta_dists.append(get_distance(new_pos, exit_pos))
+                    exit_delta_dists.append(get_distance(new_pos, exit_pos) - get_distance(self.position, exit_pos))
 
         min_robot_dist = min(robot_delta_dists) if len(robot_delta_dists) else np.Inf
         min_exit_dist = min(exit_delta_dists) if len(exit_delta_dists) else np.Inf

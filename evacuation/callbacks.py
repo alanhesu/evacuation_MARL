@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 
 from stable_baselines3.common import results_plotter
 from stable_baselines3.common.monitor import Monitor
-from stable_baselines3.common.results_plotter import load_results, ts2xy plot_results
+from stable_baselines3.common.results_plotter import load_results, ts2xy, plot_results
 from stable_baselines3.common.callbacks import BaseCallback
 
 class SaveOnBestTrainingRewardCallback(BaseCallback):
