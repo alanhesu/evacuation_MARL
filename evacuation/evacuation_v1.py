@@ -48,7 +48,7 @@ class Person:
 
     def reset(self, pos, space):
         self.position = np.array(pos)
-        space[pos] = Objects.Person
+        space[pos] = Objects.PERSON
         self.last_act = Directions.STAY
 
     def update(self, space):
@@ -61,9 +61,9 @@ class Person:
         robots_dist = []
         for i in range(space.shape[0]):
             for j in range(space.shape[1]):
-                if space[i][j] == Objects.Robot:
+                if space[i][j] == Objects.ROBOT:
                     # Store robot position
-                    robot_pos = tuple(i, j)
+                    robot_pos = (i, j)
 
                     # Add robot position to list
                     robots_pos.append(robot_pos)
@@ -93,7 +93,7 @@ class Person:
             new_pos = get_new_pos(a, self.position)
 
             # Ensure new position is empty
-            if space[new_pos] in [Objects.EMPTY, Objects.EXIT]:
+            if (space[tuple(new_pos.astype(int))] == Objects.EMPTY or space[tuple(new_pos.astype(int))] == Objects.EXIT):
                 # Add action to list
                 actions.append(a)
 
@@ -260,6 +260,16 @@ class raw_env(AECEnv, EzPickle):
 
         self.space_init = copy.deepcopy(self.space)
 
+        # generate random positions for each human
+        human_positions = self._randpos(const.NUM_PEOPLE)
+
+        # populate an array of humans (these aren't agents)
+        self.humans = {}
+        for num, pos in enumerate(human_positions):
+            human = Person(pos, num, self.space)
+            identifier = f"human_{num}"
+            self.humans[identifier] = human
+
         # generate random positions for each robot
         robot_positions = self._randpos(const.NUM_ROBOTS)
 
@@ -329,8 +339,9 @@ class raw_env(AECEnv, EzPickle):
 
         self.rewards[agent_id], self.dones[agent_id] = agent.update(action, self.space)
 
-        # if all_agents_updated:
-        # for _ in range(const.STEPS_PER_FRAME):
+        if all_agents_updated:
+            for human_id in self.humans:
+                self.humans[human_id].update(self.space)
 
         self.frame += 1
         if self.frame == self.max_cycles:
@@ -404,6 +415,14 @@ class raw_env(AECEnv, EzPickle):
                     pg.draw.circle(self.screen, color, (c*res+res//2, r*res+res//2), res//2)
                     self._draw_agent_action(agent)
 
+            for human_id in self.humans:
+                human = self.humans[human_id]
+                color = (0, 0, 255)
+                r, c = tuple(human.position)
+                pg.draw.circle(self.screen, color, (c*res+res//2, r*res+res//2), res//2)
+                self._draw_agent_action(human)
+
+
             # scale up to display size
             scaled_win = pg.transform.scale(self.screen, self.display_screen.get_size())
             self.display_screen.blit(scaled_win, (0, 0))
@@ -475,4 +494,6 @@ def get_new_pos(action, position):
         new_pos = position + [-1, -1]
     elif action == Directions.STAY:
         new_pos = position + [0, 0]
+    elif action == None:
+        new_pos = position
     return new_pos
