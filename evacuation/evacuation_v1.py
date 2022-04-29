@@ -50,6 +50,7 @@ class Person:
         self.position = np.array(pos)
         space[pos] = Objects.PERSON
         self.last_act = Directions.STAY
+        self.abandoned = False
 
     def update(self, space):
         # Find the closest robot and move in the direction of it
@@ -62,59 +63,135 @@ class Person:
         for i in range(space.shape[0]):
             for j in range(space.shape[1]):
                 if space[i][j] == Objects.ROBOT:
+                    failure = False
                     # Store robot position
                     robot_pos = (i, j)
 
-                    # Add robot position to list
-                    robots_pos.append(robot_pos)
+                    # Get line from person to robot (idx 0 is y, idx 1 is x)
+                    m = (robot_pos[0] - self.position[0]) / (
+                        robot_pos[1] - self.position[1]
+                    )
+                    b = robot_pos[0]
 
-                    # Get distance between robot and person
-                    robot_dist = get_distance(self.position, robot_pos)
+                    a = -m
+                    c = -b
+                    b = 1
 
-                    # Add robot distance to list
-                    robots_dist.append(robot_dist)
+                    for k in range(space.shape[0]):
+                        for l in range(space.shape[1]):
+                            if space[k][l] == Objects.WALL:
+                                d = abs(a * l + b * k + c) / ((a ** 2 + b ** 2) ** 0.5)
 
-        # Find index of robot with minimum distance
-        robot_idx = np.argmin(robots_dist)
+                                if d < (2 ** 0.5 - 0.01):
+                                    failure = True
+                                    break
+                            if failure:
+                                break
+                        if failure:
+                            break
 
-        # Get robot position with minimum distance
-        robot_pos = robots_pos[robot_idx]
-        robot_dist = robots_dist[robot_idx]
+                    if not failure:
+                        # Add robot position to list
+                        robots_pos.append(robot_pos)
 
-        # Choose action that moves person closer to robot
+                        # Get distance between robot and person
+                        robot_dist = get_distance(self.position, robot_pos)
+
+                        # Add robot distance to list
+                        robots_dist.append(robot_dist)
+
+        # Get list of positions of exits
+        exits_pos = []
+        exits_dist = []
+        for i in range(space.shape[0]):
+            for j in range(space.shape[1]):
+                if space[i][j] == Objects.EXIT:
+                    failure = False
+
+                    # Store exit position
+                    exit_pos = (i, j)
+
+                    # Get line from person to exit (idx 0 is y, idx 1 is x)
+                    m = (exit_pos[0] - self.position[0]) / (
+                        exit_pos[1] - self.position[1]
+                    )
+                    b = exit_pos[0]
+
+                    a = -m
+                    c = -b
+                    b = 1
+
+                    for k in range(space.shape[0]):
+                        for l in range(space.shape[1]):
+                            if space[k][l] == Objects.WALL:
+                                d = abs(a * l + b * k + c) / ((a ** 2 + b ** 2) ** 0.5)
+
+                                if d < (2 ** 0.5 - 0.01):
+                                    failure = True
+                                    break
+                            if failure:
+                                break
+                        if failure:
+                            break
+
+                    if not failure:
+                        # Get distance between exit and person
+                        exit_dist = get_distance(self.position, exit_pos)
+
+                        if exit_dist < const.EXIT_DIST:
+                            # Add exit position to list
+                            exits_pos.append(exit_pos)
+
+                            # Add exit distance to list
+                            exits_dist.append(exit_dist)
 
         actions = []
         delta_dists = []
         new_poses = []
 
-        # Iterate through possible actions
-        for a in Directions:
-            # Get new position of person
-            new_pos = get_new_pos(a, self.position)
+        if len(robots_pos):
+            # Find index of robot with minimum distance
+            robot_idx = np.argmin(robots_dist)
 
-            # Ensure new position is empty
-            if (space[tuple(new_pos.astype(int))] == Objects.EMPTY or space[tuple(new_pos.astype(int))] == Objects.EXIT):
-                # Add action to list
-                actions.append(a)
+            # Get robot position with minimum distance
+            robot_pos = robots_pos[robot_idx]
+            robot_dist = robots_dist[robot_idx]
 
-                # Store new positions
-                new_poses.append(new_pos)
+            # Choose action that moves person closer to robot
 
-                # Get change in distance to robot
-                delta_dists.append(get_distance(new_pos, robot_pos))
+            # Iterate through possible actions
+            for a in Directions:
+                # Get new position of person
+                new_pos = get_new_pos(a, self.position)
+
+                # Ensure new position is empty
+                if (
+                    space[tuple(new_pos.astype(int))] == Objects.EMPTY
+                    or space[tuple(new_pos.astype(int))] == Objects.EXIT
+                ):
+                    # Add action to list
+                    actions.append(a)
+
+                    # Store new positions
+                    new_poses.append(new_pos)
+
+                    # Get change in distance to robot
+                    delta_dists.append(get_distance(new_pos, robot_pos))
 
         # Get desired action
-        if len(actions) == 0:
-            # Done move
-            action = Directions.STAY
-
-            # Keep same position
-            new_pos = self.position
-        else:
+        if len(actions):
             # Find action with minimum distance
             action_idx = np.argmin(delta_dists)
             action = actions[action_idx]
             new_pos = new_poses[action_idx]
+        else:
+            # Done move
+            action = Directions.STAY
+
+            self.abandoned = True
+
+            # Keep same position
+            new_pos = self.position
 
         # Update state and action
         done = False
@@ -402,7 +479,12 @@ class raw_env(AECEnv, EzPickle):
             if not self.rendering:
                 self.rendering = True
                 pg.display.init()
-                self.screen = pg.Surface((const.MAP_WIDTH*const.PIXEL_RESOLUTION, const.MAP_HEIGHT*const.PIXEL_RESOLUTION))
+                self.screen = pg.Surface(
+                    (
+                        const.MAP_WIDTH * const.PIXEL_RESOLUTION,
+                        const.MAP_HEIGHT * const.PIXEL_RESOLUTION,
+                    )
+                )
                 self.display_screen = pg.display.set_mode(const.SCREEN_SIZE)
 
             res = const.PIXEL_RESOLUTION
@@ -411,13 +493,25 @@ class raw_env(AECEnv, EzPickle):
                 for c in range(0, const.MAP_WIDTH):
                     if self.space[r, c] == Objects.WALL:
                         color = (128, 128, 128)
-                        pg.draw.rect(self.screen, color, pg.Rect(c*res, r*res, c*res+res, r*res+res))
-                    elif (self.space[r,c] == Objects.EXIT):
+                        pg.draw.rect(
+                            self.screen,
+                            color,
+                            pg.Rect(c * res, r * res, c * res + res, r * res + res),
+                        )
+                    elif self.space[r, c] == Objects.EXIT:
                         color = (255, 0, 0)
-                        pg.draw.rect(self.screen, color, pg.Rect(c*res, r*res, c*res+res, r*res+res))
+                        pg.draw.rect(
+                            self.screen,
+                            color,
+                            pg.Rect(c * res, r * res, c * res + res, r * res + res),
+                        )
                     else:
                         color = (255, 255, 255)
-                        pg.draw.rect(self.screen, color, pg.Rect(c*res, r*res, c*res+res, r*res+res))
+                        pg.draw.rect(
+                            self.screen,
+                            color,
+                            pg.Rect(c * res, r * res, c * res + res, r * res + res),
+                        )
 
             # draw agents as circles and their last action as a line
             for agent_id in self.agents:
@@ -425,7 +519,12 @@ class raw_env(AECEnv, EzPickle):
                     agent = self.robots[agent_id]
                     color = (0, 255, 0)
                     r, c = tuple(agent.position)
-                    pg.draw.circle(self.screen, color, (c*res+res//2, r*res+res//2), res//2)
+                    pg.draw.circle(
+                        self.screen,
+                        color,
+                        (c * res + res // 2, r * res + res // 2),
+                        res // 2,
+                    )
                     self._draw_agent_action(agent)
 
             for human_id in self.humans:
@@ -435,7 +534,6 @@ class raw_env(AECEnv, EzPickle):
                     r, c = tuple(human.position)
                     pg.draw.circle(self.screen, color, (c*res+res//2, r*res+res//2), res//2)
                     self._draw_agent_action(human)
-
 
             # scale up to display size
             scaled_win = pg.transform.scale(self.screen, self.display_screen.get_size())
@@ -464,30 +562,32 @@ class raw_env(AECEnv, EzPickle):
         res = const.PIXEL_RESOLUTION
         action = agent.last_act
         color = (0, 0, 0)
-        p1 = agent.position*res+res//2
-        if (action == Directions.UP):
-            p2 = p1 + np.array([-1, 0])*res//2
-        elif (action == Directions.UPRIGHT):
-            p2 = p1 + np.array([-1, 1])*res//4
-        elif (action == Directions.RIGHT):
-            p2 = p1 + np.array([0, 1])*res//2
-        elif (action == Directions.DOWNRIGHT):
-            p2 = p1 + np.array([1, 1])*res//4
-        elif (action == Directions.DOWN):
-            p2 = p1 + np.array([1, 0])*res//2
-        elif (action == Directions.DOWNLEFT):
-            p2 = p1 + np.array([1, -1])*res//4
-        elif (action == Directions.LEFT):
-            p2 = p1 + np.array([0, -1])*res//2
-        elif (action == Directions.UPLEFT):
-            p2 = p1 + np.array([-1, -1])*res//4
-        elif (action == Directions.STAY):
-            p2 = p1 + np.array([0, 0])*res//2
+        p1 = agent.position * res + res // 2
+        if action == Directions.UP:
+            p2 = p1 + np.array([-1, 0]) * res // 2
+        elif action == Directions.UPRIGHT:
+            p2 = p1 + np.array([-1, 1]) * res // 4
+        elif action == Directions.RIGHT:
+            p2 = p1 + np.array([0, 1]) * res // 2
+        elif action == Directions.DOWNRIGHT:
+            p2 = p1 + np.array([1, 1]) * res // 4
+        elif action == Directions.DOWN:
+            p2 = p1 + np.array([1, 0]) * res // 2
+        elif action == Directions.DOWNLEFT:
+            p2 = p1 + np.array([1, -1]) * res // 4
+        elif action == Directions.LEFT:
+            p2 = p1 + np.array([0, -1]) * res // 2
+        elif action == Directions.UPLEFT:
+            p2 = p1 + np.array([-1, -1]) * res // 4
+        elif action == Directions.STAY:
+            p2 = p1 + np.array([0, 0]) * res // 2
 
         pg.draw.line(self.screen, color, (p1[1], p1[0]), (p2[1], p2[0]))
 
+
 def get_distance(p1, p2):
     return np.sqrt(np.power(p2[0] - p1[0], 2) + np.power(p2[1] - p1[1], 2))
+
 
 def get_new_pos(action, position):
     if action == Directions.UP:
