@@ -50,6 +50,7 @@ class Person:
         self.position = np.array(pos)
         space[pos] = Objects.PERSON
         self.last_act = Directions.STAY
+        self.abandoned = False
 
     def update(self, space):
         # Find the closest robot and move in the direction of it
@@ -99,6 +100,10 @@ class Person:
                         # Add robot distance to list
                         robots_dist.append(robot_dist)
 
+        actions = []
+        delta_dists = []
+        new_poses = []
+
         if len(robots_pos):
             # Find index of robot with minimum distance
             robot_idx = np.argmin(robots_dist)
@@ -107,35 +112,33 @@ class Person:
             robot_pos = robots_pos[robot_idx]
             robot_dist = robots_dist[robot_idx]
 
-        # Choose action that moves person closer to robot
+            # Choose action that moves person closer to robot
 
-        actions = []
-        delta_dists = []
-        new_poses = []
+            # Iterate through possible actions
+            for a in Directions:
+                # Get new position of person
+                new_pos = get_new_pos(a, self.position)
 
-        # Iterate through possible actions
-        for a in Directions:
-            # Get new position of person
-            new_pos = get_new_pos(a, self.position)
+                # Ensure new position is empty
+                if (
+                    space[tuple(new_pos.astype(int))] == Objects.EMPTY
+                    or space[tuple(new_pos.astype(int))] == Objects.EXIT
+                ):
+                    # Add action to list
+                    actions.append(a)
 
-            # Ensure new position is empty
-            if (
-                space[tuple(new_pos.astype(int))] == Objects.EMPTY
-                or space[tuple(new_pos.astype(int))] == Objects.EXIT
-            ):
-                # Add action to list
-                actions.append(a)
+                    # Store new positions
+                    new_poses.append(new_pos)
 
-                # Store new positions
-                new_poses.append(new_pos)
-
-                # Get change in distance to robot
-                delta_dists.append(get_distance(new_pos, robot_pos))
+                    # Get change in distance to robot
+                    delta_dists.append(get_distance(new_pos, robot_pos))
 
         # Get desired action
         if len(actions) == 0:
             # Done move
             action = Directions.STAY
+
+            self.abandoned = True
 
             # Keep same position
             new_pos = self.position
