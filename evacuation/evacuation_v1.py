@@ -134,7 +134,12 @@ class Person:
                     delta_dists.append(get_distance(new_pos, robot_pos))
 
         # Get desired action
-        if len(actions) == 0:
+        if len(actions):
+            # Find action with minimum distance
+            action_idx = np.argmin(delta_dists)
+            action = actions[action_idx]
+            new_pos = new_poses[action_idx]
+        else:
             # Done move
             action = Directions.STAY
 
@@ -142,11 +147,6 @@ class Person:
 
             # Keep same position
             new_pos = self.position
-        else:
-            # Find action with minimum distance
-            action_idx = np.argmin(delta_dists)
-            action = actions[action_idx]
-            new_pos = new_poses[action_idx]
 
         # Update state and action
         self.last_act = action
