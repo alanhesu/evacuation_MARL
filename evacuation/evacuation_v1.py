@@ -50,6 +50,7 @@ class Robot():
         # action = 0-8
         newpos = np.zeros(self.position.shape)
         done = False
+        reward = 0
         print(action)
         if (action == Directions.UP):
             newpos = self.position + [-1, 0]
@@ -84,10 +85,8 @@ class Robot():
                 done = True
             else:
                 reward = const.WALL_PENALTY
-                reward = 0
         else:
             # move normally
-            reward = const.MOVE_PENALTY
             space[tuple(self.position.astype(int))] = Objects.EMPTY
             space[tuple(newpos.astype(int))] = Objects.ROBOT
             self.position = newpos
@@ -95,6 +94,7 @@ class Robot():
         #debug add distance to goal to reward
         dist = np.abs(np.sum(self.position - np.array([0, 2]))) + 1e-12
         # reward += 1/dist
+        reward += const.MOVE_PENALTY
 
         return reward, done
 
