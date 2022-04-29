@@ -100,6 +100,51 @@ class Person:
                         # Add robot distance to list
                         robots_dist.append(robot_dist)
 
+        # Get list of positions of exits
+        exits_pos = []
+        exits_dist = []
+        for i in range(space.shape[0]):
+            for j in range(space.shape[1]):
+                if space[i][j] == Objects.EXIT:
+                    failure = False
+
+                    # Store exit position
+                    exit_pos = (i, j)
+
+                    # Get line from person to exit (idx 0 is y, idx 1 is x)
+                    m = (exit_pos[0] - self.position[0]) / (
+                        exit_pos[1] - self.position[1]
+                    )
+                    b = exit_pos[0]
+
+                    a = -m
+                    c = -b
+                    b = 1
+
+                    for k in range(space.shape[0]):
+                        for l in range(space.shape[1]):
+                            if space[k][l] == Objects.Wall:
+                                d = abs(a * l + b * k + c) / ((a ** 2 + b ** 2) ** 0.5)
+
+                                if d < (2 ** 0.5 - 0.01):
+                                    failure = True
+                                    break
+                            if failure:
+                                break
+                        if failure:
+                            break
+
+                    if not failure:
+                        # Get distance between exit and person
+                        exit_dist = get_distance(self.position, exit_pos)
+
+                        if exit_dist < const.EXIT_DIST:
+                            # Add exit position to list
+                            exits_pos.append(exit_pos)
+
+                            # Add exit distance to list
+                            exits_dist.append(exit_dist)
+
         actions = []
         delta_dists = []
         new_poses = []
