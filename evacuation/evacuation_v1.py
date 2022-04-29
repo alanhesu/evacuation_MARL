@@ -117,11 +117,16 @@ class Person:
             new_pos = new_poses[action_idx]
 
         # Update state and action
+        done = False
         self.last_act = action
         space[tuple(self.position.astype(int))] = Objects.EMPTY
-        space[tuple(new_pos.astype(int))] = Objects.PERSON
+        if (space[tuple(new_pos.astype(int))] == Objects.EMPTY):
+            space[tuple(new_pos.astype(int))] = Objects.PERSON
+        else:
+            done = True
         self.position = new_pos
 
+        return done
 
 class Robot:
     def __init__(self, pos, num, space):
@@ -297,6 +302,7 @@ class raw_env(AECEnv, EzPickle):
             )
 
         self.possible_agents = self.agents[:]
+        self.possible_humans = self.humans
         self._agent_selector = agent_selector(self.agents)
         self.agent_selection = self._agent_selector.next()
         self.reset()
@@ -341,7 +347,8 @@ class raw_env(AECEnv, EzPickle):
 
         if all_agents_updated:
             for human_id in self.humans:
-                self.humans[human_id].update(self.space)
+                if (not self.human_dones[human_id]):
+                    self.human_dones[human_id] = self.humans[human_id].update(self.space)
 
         self.frame += 1
         if self.frame == self.max_cycles:
@@ -370,10 +377,16 @@ class raw_env(AECEnv, EzPickle):
         for i, r in enumerate(self.robots.values()):
             r.reset(robot_positions[i], self.space)
 
+        human_positions = self._randpos(const.NUM_PEOPLE)
+        for i, h in enumerate(self.humans.values()):
+            h.reset(human_positions[i], self.space)
+
         self.agents = self.possible_agents[:]
+        self.humans = self.possible_humans
         self.rewards = dict(zip(self.agents, [0 for _ in self.agents]))
         self._cumulative_rewards = dict(zip(self.agents, [0 for _ in self.agents]))
         self.dones = dict(zip(self.agents, [False for _ in self.agents]))
+        self.human_dones = dict(zip(self.humans, [False for _ in self.humans]))
         self.infos = dict(zip(self.agents, [{} for _ in self.agents]))
         self.rendering = False
         self.frame = 0
@@ -416,11 +429,12 @@ class raw_env(AECEnv, EzPickle):
                     self._draw_agent_action(agent)
 
             for human_id in self.humans:
-                human = self.humans[human_id]
-                color = (0, 0, 255)
-                r, c = tuple(human.position)
-                pg.draw.circle(self.screen, color, (c*res+res//2, r*res+res//2), res//2)
-                self._draw_agent_action(human)
+                if (not self.human_dones[human_id]):
+                    human = self.humans[human_id]
+                    color = (0, 0, 255)
+                    r, c = tuple(human.position)
+                    pg.draw.circle(self.screen, color, (c*res+res//2, r*res+res//2), res//2)
+                    self._draw_agent_action(human)
 
 
             # scale up to display size
