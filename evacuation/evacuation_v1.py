@@ -62,7 +62,7 @@ class Person:
         robots_dist = []
         for i in range(space.shape[0]):
             for j in range(space.shape[1]):
-                if space[i][j] == Objects.ROBOT:
+                if space[i][j] in [Objects.ROBOT, Objects.EXIT]:
                     failure = False
                     # Store robot position
                     robot_pos = (i, j)
@@ -71,18 +71,24 @@ class Person:
                     m = (robot_pos[0] - self.position[0]) / (
                         robot_pos[1] - self.position[1] + 1e-12
                     )
-                    b = robot_pos[0] - m*robot_pos[1]
+                    b = robot_pos[0] - m * robot_pos[1]
 
                     a = -m
                     c = -b
                     b = 1
 
-                    for k in range(min([robot_pos[0], self.position[0]]), max([robot_pos[0], self.position[0]])+1):
-                        for l in range(min([robot_pos[1], self.position[1]]), max([robot_pos[1], self.position[1]])+1):
+                    for k in range(
+                        min([robot_pos[0], self.position[0]]),
+                        max([robot_pos[0], self.position[0]]) + 1,
+                    ):
+                        for l in range(
+                            min([robot_pos[1], self.position[1]]),
+                            max([robot_pos[1], self.position[1]]) + 1,
+                        ):
                             if space[k][l] == Objects.WALL:
                                 d = abs(a * l + b * k + c) / ((a ** 2 + b ** 2) ** 0.5)
 
-                                if d < (2 ** 0.5/2 - 0.01):
+                                if d < (2 ** 0.5 / 2 - 0.01):
                                     failure = True
                                     break
                             if failure:
@@ -95,55 +101,15 @@ class Person:
                         robots_pos.append(robot_pos)
 
                         # Get distance between robot and person
-                        robot_dist = get_distance(self.position, robot_pos)
+                        robot_dist = (
+                            get_distance(self.position, robot_pos)
+                            + const.ROBOT_EXIT_RATIO
+                            if space[i][j] == Objects.ROBOT
+                            else get_distance(self.position, robot_pos)
+                        )
 
                         # Add robot distance to list
                         robots_dist.append(robot_dist)
-
-        # Get list of positions of exits
-        exits_pos = []
-        exits_dist = []
-        for i in range(space.shape[0]):
-            for j in range(space.shape[1]):
-                if space[i][j] == Objects.EXIT:
-                    failure = False
-
-                    # Store exit position
-                    exit_pos = (i, j)
-
-                    # Get line from person to exit (idx 0 is y, idx 1 is x)
-                    m = (exit_pos[0] - self.position[0]) / (
-                        exit_pos[1] - self.position[1] + 1e-12
-                    )
-                    b = exit_pos[0]
-
-                    a = -m
-                    c = -b
-                    b = 1
-
-                    for k in range(min([exit_pos[0], self.position[0]]), max([exit_pos[0], self.position[0]])+1):
-                        for l in range(min([exit_pos[1], self.position[1]]), max([exit_pos[1], self.position[1]])+1):
-                            if space[k][l] == Objects.WALL:
-                                d = abs(a * l + b * k + c) / ((a ** 2 + b ** 2) ** 0.5)
-
-                                if d < (2 ** 0.5 - 0.01):
-                                    failure = True
-                                    break
-                            if failure:
-                                break
-                        if failure:
-                            break
-
-                    if not failure:
-                        # Get distance between exit and person
-                        exit_dist = get_distance(self.position, exit_pos)
-
-                        if exit_dist < const.EXIT_DIST:
-                            # Add exit position to list
-                            exits_pos.append(exit_pos)
-
-                            # Add exit distance to list
-                            exits_dist.append(exit_dist)
 
         robot_actions = []
         robot_delta_dists = []
@@ -176,55 +142,14 @@ class Person:
                     robot_new_poses.append(new_pos)
 
                     # Get change in distance to robot
-                    robot_delta_dists.append(get_distance(new_pos, robot_pos) - get_distance(self.position, robot_pos))
+                    robot_delta_dists.append(
+                        get_distance(new_pos, robot_pos)
+                        - get_distance(self.position, robot_pos)
+                    )
 
-        exit_actions = []
-        exit_delta_dists = []
-        exit_new_poses = []
+        # min_robot_dist = min(robot_delta_dists) if len(robot_delta_dists) else np.Inf
 
-        if len(exits_pos):
-            # Find index of exit with minimum distance
-            exit_idx = np.argmin(exits_dist)
-
-            # Get exit position with minimum distance
-            exit_pos = exits_pos[exit_idx]
-            exit_dist = exits_dist[exit_idx]
-
-            # Choose action that moves person closer to exit
-
-            # Iterate through possible exit actions
-            for a in Directions:
-                # Get new position of person
-                new_pos = get_new_pos(a, self.position)
-
-                # Ensure new position is empty
-                if (
-                    space[tuple(new_pos.astype(int))] == Objects.EMPTY
-                    or space[tuple(new_pos.astype(int))] == Objects.EXIT
-                ):
-                    # Add action to list
-                    exit_actions.append(a)
-
-                    # Store new positions
-                    exit_new_poses.append(new_pos)
-
-                    # Get change in distance to exit
-                    exit_delta_dists.append(get_distance(new_pos, exit_pos) - get_distance(self.position, exit_pos))
-
-        min_robot_dist = min(robot_delta_dists) if len(robot_delta_dists) else np.Inf
-        min_exit_dist = min(exit_delta_dists) if len(exit_delta_dists) else np.Inf
-
-        if min_exit_dist < min_robot_dist:
-            # Choose to folow exit
-            # Get desired action
-            # Find action with minimum distance
-            action_idx = np.argmin(exit_delta_dists)
-            action = exit_actions[action_idx]
-            new_pos = exit_new_poses[action_idx]
-        elif min_robot_dist < min_exit_dist:
-            # Choose to follow robot
-            # Get desired action
-            # Find action with minimum distance
+        if len(robot_delta_dists):
             action_idx = np.argmin(robot_delta_dists)
             action = robot_actions[action_idx]
             new_pos = robot_new_poses[action_idx]
@@ -241,13 +166,14 @@ class Person:
         done = False
         self.last_act = action
         space[tuple(self.position.astype(int))] = Objects.EMPTY
-        if (space[tuple(new_pos.astype(int))] == Objects.EMPTY):
+        if space[tuple(new_pos.astype(int))] == Objects.EMPTY:
             space[tuple(new_pos.astype(int))] = Objects.PERSON
         else:
             done = True
         self.position = new_pos
 
         return done
+
 
 class Robot:
     def __init__(self, pos, num, space):
@@ -468,8 +394,10 @@ class raw_env(AECEnv, EzPickle):
 
         if all_agents_updated:
             for human_id in self.humans:
-                if (not self.human_dones[human_id]):
-                    self.human_dones[human_id] = self.humans[human_id].update(self.space)
+                if not self.human_dones[human_id]:
+                    self.human_dones[human_id] = self.humans[human_id].update(
+                        self.space
+                    )
 
         self.frame += 1
         if self.frame == self.max_cycles:
@@ -572,11 +500,16 @@ class raw_env(AECEnv, EzPickle):
                     self._draw_agent_action(agent)
 
             for human_id in self.humans:
-                if (not self.human_dones[human_id]):
+                if not self.human_dones[human_id]:
                     human = self.humans[human_id]
                     color = (0, 0, 255)
                     r, c = tuple(human.position)
-                    pg.draw.circle(self.screen, color, (c*res+res//2, r*res+res//2), res//2)
+                    pg.draw.circle(
+                        self.screen,
+                        color,
+                        (c * res + res // 2, r * res + res // 2),
+                        res // 2,
+                    )
                     self._draw_agent_action(human)
 
             # scale up to display size
