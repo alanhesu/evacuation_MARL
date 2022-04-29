@@ -145,9 +145,9 @@ class Person:
                             # Add exit distance to list
                             exits_dist.append(exit_dist)
 
-        actions = []
-        delta_dists = []
-        new_poses = []
+        robot_actions = []
+        robot_delta_dists = []
+        robot_new_poses = []
 
         if len(robots_pos):
             # Find index of robot with minimum distance
@@ -159,7 +159,7 @@ class Person:
 
             # Choose action that moves person closer to robot
 
-            # Iterate through possible actions
+            # Iterate through possible robot actions
             for a in Directions:
                 # Get new position of person
                 new_pos = get_new_pos(a, self.position)
@@ -170,20 +170,64 @@ class Person:
                     or space[tuple(new_pos.astype(int))] == Objects.EXIT
                 ):
                     # Add action to list
-                    actions.append(a)
+                    robot_actions.append(a)
 
                     # Store new positions
-                    new_poses.append(new_pos)
+                    robot_new_poses.append(new_pos)
 
                     # Get change in distance to robot
-                    delta_dists.append(get_distance(new_pos, robot_pos))
+                    robot_delta_dists.append(get_distance(new_pos, robot_pos))
 
-        # Get desired action
-        if len(actions):
+        exit_actions = []
+        exit_delta_dists = []
+        exit_new_poses = []
+
+        if len(exits_pos):
+            # Find index of exit with minimum distance
+            exit_idx = np.argmin(exits_dist)
+
+            # Get exit position with minimum distance
+            exit_pos = exits_pos[exit_idx]
+            exit_dist = exits_dist[exit_idx]
+
+            # Choose action that moves person closer to exit
+
+            # Iterate through possible exit actions
+            for a in Directions:
+                # Get new position of person
+                new_pos = get_new_pos(a, self.position)
+
+                # Ensure new position is empty
+                if (
+                    space[tuple(new_pos.astype(int))] == Objects.EMPTY
+                    or space[tuple(new_pos.astype(int))] == Objects.EXIT
+                ):
+                    # Add action to list
+                    exit_actions.append(a)
+
+                    # Store new positions
+                    exit_new_poses.append(new_pos)
+
+                    # Get change in distance to exit
+                    exit_delta_dists.append(get_distance(new_pos, exit_pos))
+
+        min_robot_dist = min(robot_delta_dists) if len(robot_delta_dists) else np.Inf
+        min_exit_dist = min(exit_delta_dists) if len(exit_delta_dists) else np.Inf
+
+        if min_exit_dist < min_robot_dist:
+            # Choose to folow exit
+            # Get desired action
             # Find action with minimum distance
-            action_idx = np.argmin(delta_dists)
-            action = actions[action_idx]
-            new_pos = new_poses[action_idx]
+            action_idx = np.argmin(exit_delta_dists)
+            action = exit_actions[action_idx]
+            new_pos = exit_new_poses[action_idx]
+        elif min_robot_dist < min_exit_dist:
+            # Choose to follow robot
+            # Get desired action
+            # Find action with minimum distance
+            action_idx = np.argmin(robot_delta_dists)
+            action = robot_actions[action_idx]
+            new_pos = robot_new_poses[action_idx]
         else:
             # Done move
             action = Directions.STAY
