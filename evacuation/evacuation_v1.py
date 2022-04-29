@@ -41,17 +41,20 @@ class Robot():
         self.id = num
 
         self.reset(pos, space)
+        self.dist_exp = 1
+        # self.max_dist = get_distance([0,0], space.shape)
+        self.max_dist = np.sqrt(2)
 
     def reset(self, pos, space):
         self.position = np.array(pos)
         space[pos] = Objects.ROBOT
+        self.prev_dist = get_distance(self.position, np.array([0, 2]))
 
     def update(self, action, space):
         # action = 0-8
         newpos = np.zeros(self.position.shape)
         done = False
         reward = 0
-        print(action)
         if (action == Directions.UP):
             newpos = self.position + [-1, 0]
         elif (action == Directions.UPRIGHT):
@@ -91,10 +94,13 @@ class Robot():
             space[tuple(newpos.astype(int))] = Objects.ROBOT
             self.position = newpos
 
-        #debug add distance to goal to reward
-        dist = np.abs(np.sum(self.position - np.array([0, 2]))) + 1e-12
-        # reward += 1/dist
-        reward += const.MOVE_PENALTY
+            #add distance to goal to reward
+            dist = get_distance(self.position, np.array([0, 2]))
+            # R_goal = (1 - dist**self.dist_exp) - (1 - self.prev_dist**self.dist_exp)
+            R_goal = (self.prev_dist - dist)/self.max_dist
+            self.prev_dist = dist
+            reward += R_goal
+            reward += const.MOVE_PENALTY
 
         return reward, done
 
@@ -335,3 +341,6 @@ class raw_env(AECEnv, EzPickle):
                 positions.append(pos)
 
         return positions
+
+def get_distance(p1, p2):
+    return np.sqrt(np.power(p2[0] - p1[0], 2) + np.power(p2[1] - p1[1], 2))
