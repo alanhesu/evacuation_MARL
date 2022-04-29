@@ -4,6 +4,7 @@ from stable_baselines3 import PPO
 from pettingzoo.butterfly import knights_archers_zombies_v9, pistonball_v6
 import supersuit as ss
 import evacuation_v1
+import numpy as np
 
 env = evacuation_v1.env()
 # env = ss.color_reduction_v0(env, mode='B')
@@ -13,12 +14,14 @@ env = evacuation_v1.env()
 model = PPO.load("evac_policy1")
 
 env.reset()
+steps = 0
 for agent in env.agent_iter():
     obs, reward, done, info = env.last()
-    print(reward)
+    # print(reward)
     act = model.predict(obs, deterministic=True)[0] if not done else None
     env.step(act)
     env.render()
     time.sleep(0.05)
+    steps += 1
 
 print('done')

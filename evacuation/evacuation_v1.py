@@ -1,4 +1,5 @@
 import itertools as it
+import time
 import math
 import os
 import copy
@@ -18,15 +19,15 @@ from pettingzoo.utils.conversions import parallel_wrapper_fn
 import constants as const
 
 class Directions(IntEnum):
-    UP = auto()
-    UPRIGHT = auto()
-    RIGHT = auto()
-    DOWNRIGHT = auto()
-    DOWN = auto()
-    DOWNLEFT = auto()
-    LEFT = auto()
-    UPLEFT = auto()
-    STAY = auto()
+    UP = 0
+    UPRIGHT = 1
+    RIGHT = 2
+    DOWNRIGHT = 3
+    DOWN = 4
+    DOWNLEFT = 5
+    LEFT = 6
+    UPLEFT = 7
+    STAY = 8
 
 class Objects(IntEnum):
     EMPTY = 0
@@ -67,6 +68,8 @@ class Robot():
             newpos = self.position + [-1, -1]
         elif (action == Directions.STAY):
             newpos = self.position + [0, 0]
+        elif (action == None):
+            return 0, True
 
         if (np.min(newpos) < 0 or newpos[0] >= const.MAP_HEIGHT or newpos[1] >= const.MAP_WIDTH):
             # check out of bounds
@@ -75,6 +78,7 @@ class Robot():
             # check collision
             if (space[tuple(newpos.astype(int))] == Objects.EXIT):
                 reward = const.EXIT_REWARD
+                # print('exit')
                 space[tuple(self.position.astype(int))] = Objects.EMPTY
                 done = True
             else:
@@ -83,7 +87,6 @@ class Robot():
         else:
             # move normally
             reward = const.MOVE_PENALTY
-            reward = 0
             space[tuple(self.position.astype(int))] = Objects.EMPTY
             space[tuple(newpos.astype(int))] = Objects.ROBOT
             self.position = newpos
@@ -261,7 +264,11 @@ class raw_env(AECEnv, EzPickle):
         if (self.despawn):
             self._dones_step_first()
 
+        # self.render()
+        # time.sleep(0.05)
+
     def reset(self):
+        # print('reset')
         self.screen = pg.Surface(const.SCREEN_SIZE)
         self.done = False
 
