@@ -17,9 +17,9 @@ env.reset()
 steps = 0
 for agent in env.agent_iter():
     obs, reward, done, info = env.last()
-    # print(reward)
     act = model.predict(obs, deterministic=True)[0] if not done else None
     env.step(act)
+    print(act)
     env.render()
     time.sleep(0.05)
     steps += 1

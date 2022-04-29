@@ -50,6 +50,7 @@ class Robot():
         # action = 0-8
         newpos = np.zeros(self.position.shape)
         done = False
+        print(action)
         if (action == Directions.UP):
             newpos = self.position + [-1, 0]
         elif (action == Directions.UPRIGHT):
@@ -207,9 +208,6 @@ class raw_env(AECEnv, EzPickle):
         self.agent_selection = self._agent_selector.next()
         self.reset()
 
-        print('initial state:')
-        print(self.space)
-
     def seed(self, seed=None):
         self.rng, seed = seeding.np_random(seed)
 
@@ -287,6 +285,9 @@ class raw_env(AECEnv, EzPickle):
         self.frame = 0
         self._agent_selector.reinit(self.agents)
         self.agent_selection = self._agent_selector.next()
+
+        # print('initial state:')
+        # print(self.space)
 
     def render(self, mode='human'):
         if mode == 'human':
