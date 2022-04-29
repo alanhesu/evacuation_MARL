@@ -11,7 +11,7 @@ env = evacuation_v1.env()
 # env = ss.resize_v0(env, x_size=84, y_size=84)
 # env = ss.frame_stack_v1(env, 3)
 
-model = DQN.load("evac_policy1")
+model = DQN.load("evac_policy1", despawn=False)
 
 all_steps = []
 for i in range(0, 10):

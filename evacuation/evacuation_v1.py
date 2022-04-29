@@ -49,9 +49,12 @@ class Robot():
         self.position = np.array(pos)
         space[pos] = Objects.ROBOT
         self.prev_dist = get_distance(self.position, np.array([0, 2]))
+        self.last_act = Directions.STAY
 
     def update(self, action, space):
         # action = 0-8
+        self.last_act = action
+
         newpos = np.zeros(self.position.shape)
         done = False
         reward = 0
@@ -301,23 +304,31 @@ class raw_env(AECEnv, EzPickle):
             if not self.rendering:
                 self.rendering = True
                 pg.display.init()
-                self.screen = pg.Surface((const.MAP_WIDTH, const.MAP_HEIGHT))
+                self.screen = pg.Surface((const.MAP_WIDTH*const.PIXEL_RESOLUTION, const.MAP_HEIGHT*const.PIXEL_RESOLUTION))
                 self.display_screen = pg.display.set_mode(const.SCREEN_SIZE)
 
+            res = const.PIXEL_RESOLUTION
             self.screen.fill((255, 255, 255))
             for r in range(0, const.MAP_HEIGHT):
                 for c in range(0, const.MAP_WIDTH):
                     if (self.space[r,c] == Objects.WALL):
                         color = (128, 128, 128)
-                    elif (self.space[r,c] == Objects.PERSON):
-                        color = (0, 0, 255)
-                    elif (self.space[r,c] == Objects.ROBOT):
-                        color = (0, 255, 0)
+                        pg.draw.rect(self.screen, color, pg.Rect(c*res, r*res, c*res+res, r*res+res))
                     elif (self.space[r,c] == Objects.EXIT):
                         color = (255, 0, 0)
+                        pg.draw.rect(self.screen, color, pg.Rect(c*res, r*res, c*res+res, r*res+res))
                     else:
                         color = (255, 255, 255)
-                    self.screen.set_at((c, r), color)
+                        pg.draw.rect(self.screen, color, pg.Rect(c*res, r*res, c*res+res, r*res+res))
+
+            # draw agents as circles and their last action as a line
+            for agent_id in self.agents:
+                if agent_id in self.robots and not self.dones[agent_id]:
+                    agent = self.robots[agent_id]
+                    color = (0, 255, 0)
+                    r, c = tuple(agent.position)
+                    pg.draw.circle(self.screen, color, (c*res+res//2, r*res+res//2), res//2)
+                    self._draw_agent_action(agent)
 
             # scale up to display size
             scaled_win = pg.transform.scale(self.screen, self.display_screen.get_size())
@@ -342,5 +353,32 @@ class raw_env(AECEnv, EzPickle):
 
         return positions
 
+    def _draw_agent_action(self, agent):
+        res = const.PIXEL_RESOLUTION
+        action = agent.last_act
+        color = (0, 0, 0)
+        p1 = agent.position*res+res//2
+        if (action == Directions.UP):
+            p2 = p1 + np.array([-1, 0])*res//2
+        elif (action == Directions.UPRIGHT):
+            p2 = p1 + np.array([-1, 1])*res//4
+        elif (action == Directions.RIGHT):
+            p2 = p1 + np.array([0, 1])*res//2
+        elif (action == Directions.DOWNRIGHT):
+            p2 = p1 + np.array([1, 1])*res//4
+        elif (action == Directions.DOWN):
+            p2 = p1 + np.array([1, 0])*res//2
+        elif (action == Directions.DOWNLEFT):
+            p2 = p1 + np.array([1, -1])*res//4
+        elif (action == Directions.LEFT):
+            p2 = p1 + np.array([0, -1])*res//2
+        elif (action == Directions.UPLEFT):
+            p2 = p1 + np.array([-1, -1])*res//4
+        elif (action == Directions.STAY):
+            p2 = p1 + np.array([0, 0])*res//2
+
+        pg.draw.line(self.screen, color, (p1[1], p1[0]), (p2[1], p2[0]))
+
 def get_distance(p1, p2):
     return np.sqrt(np.power(p2[0] - p1[0], 2) + np.power(p2[1] - p1[1], 2))
+
