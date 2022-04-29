@@ -1,4 +1,5 @@
 import itertools as it
+from re import A
 import time
 import math
 import os
@@ -18,6 +19,7 @@ from pettingzoo.utils.conversions import parallel_wrapper_fn
 
 import constants as const
 
+
 class Directions(IntEnum):
     UP = 0
     UPRIGHT = 1
@@ -29,6 +31,7 @@ class Directions(IntEnum):
     UPLEFT = 7
     STAY = 8
 
+
 class Objects(IntEnum):
     EMPTY = 0
     WALL = 1
@@ -36,7 +39,91 @@ class Objects(IntEnum):
     ROBOT = 3
     EXIT = 4
 
-class Robot():
+
+class Person:
+    def __init__(self, pos, num, space):
+        self.id = num
+
+        self.reset(pos, space)
+
+    def reset(self, pos, space):
+        self.position = np.array(pos)
+        space[pos] = Objects.Person
+        self.last_act = Directions.STAY
+
+    def update(self, space):
+        # Find the closest robot and move in the direction of it
+
+        # Find closest robot
+
+        # Get list of positions of robots
+        robots_pos = []
+        robots_dist = []
+        for i in range(space.shape[0]):
+            for j in range(space.shape[1]):
+                if space[i][j] == Objects.Robot:
+                    # Store robot position
+                    robot_pos = tuple(i, j)
+
+                    # Add robot position to list
+                    robots_pos.append(robot_pos)
+
+                    # Get distance between robot and person
+                    robot_dist = get_distance(self.position, robot_pos)
+
+                    # Add robot distance to list
+                    robots_dist.append(robot_dist)
+
+        # Find index of robot with minimum distance
+        robot_idx = np.argmin(robots_dist)
+
+        # Get robot position with minimum distance
+        robot_pos = robots_pos[robot_idx]
+        robot_dist = robots_dist[robot_idx]
+
+        # Choose action that moves person closer to robot
+
+        actions = []
+        delta_dists = []
+        new_poses = []
+
+        # Iterate through possible actions
+        for a in Directions:
+            # Get new position of person
+            new_pos = get_new_pos(a, self.position)
+
+            # Ensure new position is empty
+            if space[new_pos] in [Objects.EMPTY, Objects.EXIT]:
+                # Add action to list
+                actions.append(a)
+
+                # Store new positions
+                new_poses.append(new_pos)
+
+                # Get change in distance to robot
+                delta_dists.append(get_distance(new_pos, robot_pos))
+
+        # Get desired action
+        if len(actions) == 0:
+            # Done move
+            action = Directions.STAY
+
+            # Keep same position
+            new_pos = self.position
+        else:
+            # Find action with minimum distance
+            action_idx = np.argmin(delta_dists)
+            action = actions[action_idx]
+            new_pos = new_poses[action_idx]
+
+        # Update state and action
+        self.last_act = action
+        space[tuple(self.position.astype(int))] = Objects.EMPTY
+        space[tuple(new_pos.astype(int))] = Objects.PERSON
+        self.position = new_pos
+
+
+class Robot:
     def __init__(self, pos, num, space):
         self.id = num
 
@@ -58,33 +145,20 @@ class Robot():
         newpos = np.zeros(self.position.shape)
         done = False
         reward = 0
-        if (action == Directions.UP):
-            newpos = self.position + [-1, 0]
-        elif (action == Directions.UPRIGHT):
-            newpos = self.position + [-1, 1]
-        elif (action == Directions.RIGHT):
-            newpos = self.position + [0, 1]
-        elif (action == Directions.DOWNRIGHT):
-            newpos = self.position + [1, 1]
-        elif (action == Directions.DOWN):
-            newpos = self.position + [1, 0]
-        elif (action == Directions.DOWNLEFT):
-            newpos = self.position + [1, -1]
-        elif (action == Directions.LEFT):
-            newpos = self.position + [0, -1]
-        elif (action == Directions.UPLEFT):
-            newpos = self.position + [-1, -1]
-        elif (action == Directions.STAY):
-            newpos = self.position + [0, 0]
-        elif (action == None):
+        newpos = get_new_pos(action, self.position)
+        if action == None:
             return 0, True
 
-        if (np.min(newpos) < 0 or newpos[0] >= const.MAP_HEIGHT or newpos[1] >= const.MAP_WIDTH):
+        if (
+            np.min(newpos) < 0
+            or newpos[0] >= const.MAP_HEIGHT
+            or newpos[1] >= const.MAP_WIDTH
+        ):
             # check out of bounds
             reward = const.OOB_PENALTY
-        elif (space[tuple(newpos.astype(int))] != Objects.EMPTY):
+        elif space[tuple(newpos.astype(int))] != Objects.EMPTY:
             # check collision
-            if (space[tuple(newpos.astype(int))] == Objects.EXIT):
+            if space[tuple(newpos.astype(int))] == Objects.EXIT:
                 reward = const.EXIT_REWARD
                 # print('exit')
                 space[tuple(self.position.astype(int))] = Objects.EMPTY
@@ -97,10 +171,10 @@ class Robot():
             space[tuple(newpos.astype(int))] = Objects.ROBOT
             self.position = newpos
 
-            #add distance to goal to reward
+            # add distance to goal to reward
             dist = get_distance(self.position, np.array([0, 2]))
             # R_goal = (1 - dist**self.dist_exp) - (1 - self.prev_dist**self.dist_exp)
-            R_goal = (self.prev_dist - dist)/self.max_dist
+            R_goal = (self.prev_dist - dist) / self.max_dist
             self.prev_dist = dist
             reward += R_goal
             reward += const.MOVE_PENALTY
@@ -114,19 +188,13 @@ def env(**kwargs):
     env = wrappers.OrderEnforcingWrapper(env)
     return env
 
+
 parallel_env = parallel_wrapper_fn(env)
 
+
 class raw_env(AECEnv, EzPickle):
-    def __init__(
-            self,
-            despawn=True,
-            max_cycles = const.MAX_CYCLES
-    ):
-        EzPickle.__init__(
-                self,
-                despawn,
-                max_cycles
-        )
+    def __init__(self, despawn=True, max_cycles=const.MAX_CYCLES):
+        EzPickle.__init__(self, despawn, max_cycles)
 
         pg.init()
 
@@ -138,53 +206,57 @@ class raw_env(AECEnv, EzPickle):
         self.closed = False
 
         self.metadata = {
-            'render_modes': ['human'],
-            'name': 'evacuation_v1',
-            'is_parallelizable': True,
-            'render_fps': const.FPS,
+            "render_modes": ["human"],
+            "name": "evacuation_v1",
+            "is_parallelizable": True,
+            "render_fps": const.FPS,
         }
 
-
-        self.state_space = spaces.Box(low=0, high=4, shape=((const.MAP_HEIGHT, const.MAP_WIDTH)), dtype=np.uint8)
+        self.state_space = spaces.Box(
+            low=0, high=4, shape=((const.MAP_HEIGHT, const.MAP_WIDTH)), dtype=np.uint8
+        )
 
         # initialize space
-        self.space = np.zeros((const.MAP_HEIGHT, const.MAP_WIDTH), dtype='uint8')
+        self.space = np.zeros((const.MAP_HEIGHT, const.MAP_WIDTH), dtype="uint8")
 
-        #TODO: initialize walls
+        # TODO: initialize walls
         for r in range(0, const.MAP_HEIGHT):
             for c in range(0, const.MAP_WIDTH):
-                if (r == 0 or c == 0
-                    or r == const.MAP_HEIGHT-1
-                    or c == const.MAP_WIDTH-1):
-                    self.space[r,c] = Objects.WALL
+                if (
+                    r == 0
+                    or c == 0
+                    or r == const.MAP_HEIGHT - 1
+                    or c == const.MAP_WIDTH - 1
+                ):
+                    self.space[r, c] = Objects.WALL
 
         # randomly generate exit locations
         def randexit():
             side = self.rng.randint(4)
-            if (side == 0):
+            if side == 0:
                 val = self.rng.randint(1, const.MAP_WIDTH)
-                pos = [(0, val-1), (0, val)]
-            if (side == 1):
+                pos = [(0, val - 1), (0, val)]
+            if side == 1:
                 val = self.rng.randint(1, const.MAP_WIDTH)
-                pos = [(const.MAP_HEIGHT-1, val-1), (const.MAP_HEIGHT-1, val)]
-            if (side == 2):
+                pos = [(const.MAP_HEIGHT - 1, val - 1), (const.MAP_HEIGHT - 1, val)]
+            if side == 2:
                 val = self.rng.randint(1, const.MAP_HEIGHT)
-                pos = [(val-1, 0), (val, 0)]
-            if (side == 3):
+                pos = [(val - 1, 0), (val, 0)]
+            if side == 3:
                 val = self.rng.randint(1, const.MAP_HEIGHT)
-                pos = [(val-1, const.MAP_WIDTH-1), (val, const.MAP_WIDTH-1)]
+                pos = [(val - 1, const.MAP_WIDTH - 1), (val, const.MAP_WIDTH - 1)]
 
             return pos
 
         num = 0
         # while num < const.NUM_EXITS:
-            # pos = randexit()
-            # if (self.space[pos[0]] != Objects.EXIT or self.space[pos[1]] != Objects.EXIT):
-                # num += 1
-                # self.space[pos[0]] = Objects.EXIT
-                # self.space[pos[1]] = Objects.EXIT
-        self.space[0,1] = Objects.EXIT
-        self.space[0,2] = Objects.EXIT
+        # pos = randexit()
+        # if (self.space[pos[0]] != Objects.EXIT or self.space[pos[1]] != Objects.EXIT):
+        # num += 1
+        # self.space[pos[0]] = Objects.EXIT
+        # self.space[pos[1]] = Objects.EXIT
+        self.space[0, 1] = Objects.EXIT
+        self.space[0, 2] = Objects.EXIT
 
         self.space_init = copy.deepcopy(self.space)
 
@@ -210,7 +282,9 @@ class raw_env(AECEnv, EzPickle):
 
         for r in self.robots:
             self.last_observation[r] = None
-            self.observation_spaces[r] = spaces.Box(low=0, high=4, shape=const.ROBOT_OBSERV_SHAPE, dtype=np.uint8)
+            self.observation_spaces[r] = spaces.Box(
+                low=0, high=4, shape=const.ROBOT_OBSERV_SHAPE, dtype=np.uint8
+            )
 
         self.possible_agents = self.agents[:]
         self._agent_selector = agent_selector(self.agents)
@@ -243,7 +317,7 @@ class raw_env(AECEnv, EzPickle):
         return state
 
     def step(self, action):
-        if (self.despawn):
+        if self.despawn:
             if self.dones[self.agent_selection]:
                 return self._was_done_step(action)
         agent_id = self.agent_selection
@@ -256,19 +330,19 @@ class raw_env(AECEnv, EzPickle):
         self.rewards[agent_id], self.dones[agent_id] = agent.update(action, self.space)
 
         # if all_agents_updated:
-            # for _ in range(const.STEPS_PER_FRAME):
+        # for _ in range(const.STEPS_PER_FRAME):
 
         self.frame += 1
         if self.frame == self.max_cycles:
             self.dones = dict(zip(self.agents, [True for _ in self.agents]))
 
-        if (self.rendering):
+        if self.rendering:
             pg.event.pump()
 
         self.agent_selection = self._agent_selector.next()
         self._cumulative_rewards[agent_id] = 0
         self._accumulate_rewards()
-        if (self.despawn):
+        if self.despawn:
             self._dones_step_first()
 
         # self.render()
@@ -298,8 +372,8 @@ class raw_env(AECEnv, EzPickle):
         # print('initial state:')
         # print(self.space)
 
-    def render(self, mode='human'):
-        if mode == 'human':
+    def render(self, mode="human"):
+        if mode == "human":
             # print(self.space)
             if not self.rendering:
                 self.rendering = True
@@ -311,7 +385,7 @@ class raw_env(AECEnv, EzPickle):
             self.screen.fill((255, 255, 255))
             for r in range(0, const.MAP_HEIGHT):
                 for c in range(0, const.MAP_WIDTH):
-                    if (self.space[r,c] == Objects.WALL):
+                    if self.space[r, c] == Objects.WALL:
                         color = (128, 128, 128)
                         pg.draw.rect(self.screen, color, pg.Rect(c*res, r*res, c*res+res, r*res+res))
                     elif (self.space[r,c] == Objects.EXIT):
@@ -348,7 +422,7 @@ class raw_env(AECEnv, EzPickle):
         positions = []
         while len(positions) < num:
             pos = tuple(self.rng.randint([0, 0], [const.MAP_HEIGHT, const.MAP_WIDTH]))
-            if (pos not in positions and self.space[pos] == Objects.EMPTY):
+            if pos not in positions and self.space[pos] == Objects.EMPTY:
                 positions.append(pos)
 
         return positions
@@ -382,3 +456,23 @@ class raw_env(AECEnv, EzPickle):
 def get_distance(p1, p2):
     return np.sqrt(np.power(p2[0] - p1[0], 2) + np.power(p2[1] - p1[1], 2))
 
+def get_new_pos(action, position):
+    if action == Directions.UP:
+        new_pos = position + [-1, 0]
+    elif action == Directions.UPRIGHT:
+        new_pos = position + [-1, 1]
+    elif action == Directions.RIGHT:
+        new_pos = position + [0, 1]
+    elif action == Directions.DOWNRIGHT:
+        new_pos = position + [1, 1]
+    elif action == Directions.DOWN:
+        new_pos = position + [1, 0]
+    elif action == Directions.DOWNLEFT:
+        new_pos = position + [1, -1]
+    elif action == Directions.LEFT:
+        new_pos = position + [0, -1]
+    elif action == Directions.UPLEFT:
+        new_pos = position + [-1, -1]
+    elif action == Directions.STAY:
+        new_pos = position + [0, 0]
+    return new_pos
