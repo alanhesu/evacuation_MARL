@@ -62,24 +62,50 @@ class Person:
         for i in range(space.shape[0]):
             for j in range(space.shape[1]):
                 if space[i][j] == Objects.Robot:
+                    failure = False
                     # Store robot position
                     robot_pos = tuple(i, j)
 
-                    # Add robot position to list
-                    robots_pos.append(robot_pos)
+                    # Get line from person to robot (idx 0 is y, idx 1 is x)
+                    m = (robot_pos[0] - self.position[0]) / (
+                        robot_pos[1] - self.position[1]
+                    )
+                    b = robot_pos[0]
 
-                    # Get distance between robot and person
-                    robot_dist = get_distance(self.position, robot_pos)
+                    a = -m
+                    c = -b
+                    b = 1
 
-                    # Add robot distance to list
-                    robots_dist.append(robot_dist)
+                    for k in range(space.shape[0]):
+                        for l in range(space.shape[1]):
+                            if space[k][l] == Objects.Wall:
+                                d = abs(a * l + b * k + c) / ((a ** 2 + b ** 2) ** 0.5)
 
-        # Find index of robot with minimum distance
-        robot_idx = np.argmin(robots_dist)
+                                if d < (2 ** 0.5 - 0.01):
+                                    failure = True
+                                    break
+                            if failure:
+                                break
+                        if failure:
+                            break
 
-        # Get robot position with minimum distance
-        robot_pos = robots_pos[robot_idx]
-        robot_dist = robots_dist[robot_idx]
+                    if not failure:
+                        # Add robot position to list
+                        robots_pos.append(robot_pos)
+
+                        # Get distance between robot and person
+                        robot_dist = get_distance(self.position, robot_pos)
+
+                        # Add robot distance to list
+                        robots_dist.append(robot_dist)
+
+        if len(robots_pos):
+            # Find index of robot with minimum distance
+            robot_idx = np.argmin(robots_dist)
+
+            # Get robot position with minimum distance
+            robot_pos = robots_pos[robot_idx]
+            robot_dist = robots_dist[robot_idx]
 
         # Choose action that moves person closer to robot
 
