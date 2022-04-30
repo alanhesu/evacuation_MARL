@@ -5,6 +5,7 @@ import math
 import os
 import copy
 from enum import IntEnum, auto
+import random
 
 import numpy as np
 import pygame as pg
@@ -115,20 +116,53 @@ class Person:
         robot_delta_dist = np.Inf
         robot_new_pose = self.position
 
-        # Iterate through possible robot actions
-        for a in Directions:
-            # Get new position of person
-            new_pos = get_new_pos(a, self.position)
+        prob = random.random()
+        if prob < const.PERSON_RAND:
+            # Take random action
 
-            # Ensure new position is empty
-            if space[tuple(new_pos.astype(int))] in [Objects.EMPTY, Objects.EXIT]:
-                d = get_distance(new_pos, min_pos) - get_distance(
-                    self.position, min_pos
-                )
-                if d < robot_delta_dist:
-                    robot_action = a
-                    robot_delta_dist = d
-                    robot_new_pose = new_pos
+            # Get list of possible actions
+            possible_actions = []
+            possible_positions = []
+
+            # Iterate through possible robot actions
+            for a in Directions:
+                # Get new position of person
+                new_pos = get_new_pos(a, self.position)
+
+                # Ensure new position is empty
+                if space[tuple(new_pos.astype(int))] in [Objects.EMPTY, Objects.EXIT]:
+                    possible_actions.append(a)
+                    possible_positions.append(new_pos)
+
+                # Allow person to stay
+                if a == Directions.STAY:
+                    possible_actions.append(a)
+                    possible_positions.append(new_pos)
+
+            # Randomly sample the list
+            idx = random.randint(0, len(possible_actions) + 1)
+
+            # Update robot_action and robot_new_pose
+            robot_action = possible_actions[idx]
+            robot_new_pose = possible_positions[idx]
+
+        else:
+            # Take best action
+
+            # Iterate through possible robot actions
+            for a in Directions:
+                # Get new position of person
+                new_pos = get_new_pos(a, self.position)
+
+                # Ensure new position is empty
+                if space[tuple(new_pos.astype(int))] in [Objects.EMPTY, Objects.EXIT]:
+                    d = get_distance(new_pos, min_pos) - get_distance(
+                        self.position, min_pos
+                    )
+                    if d < robot_delta_dist:
+                        robot_action = a
+                        robot_delta_dist = d
+                        robot_new_pose = new_pos
 
         # Update state and action
         done = False
