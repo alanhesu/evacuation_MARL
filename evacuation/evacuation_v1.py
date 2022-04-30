@@ -58,8 +58,6 @@ class Person:
         # Find closest robot
 
         # Get list of positions of robots
-        robots_pos = []
-        robots_dist = []
         min_pos = self.position
         min_dist = np.Inf
 
