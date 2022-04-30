@@ -21,7 +21,8 @@ for i in range(0, 10):
         obs, reward, done, info = env.last()
         act = model.predict(obs, deterministic=True)[0] if not done else None
         env.step(act)
-        print(reward, act)
+        if (reward == -1):
+            print(reward, act)
         env.render()
         time.sleep(0.05)
         if (not done):

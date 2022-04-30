@@ -302,9 +302,9 @@ class raw_env(AECEnv, EzPickle):
 
         num = 0
         # while num < const.NUM_EXITS:
-        # pos = randexit()
-        # if (self.space[pos[0]] != Objects.EXIT or self.space[pos[1]] != Objects.EXIT):
-        # num += 1
+            # pos = randexit()
+            # if (self.space[pos[0]] != Objects.EXIT or self.space[pos[1]] != Objects.EXIT):
+                # num += 1
         # self.space[pos[0]] = Objects.EXIT
         # self.space[pos[1]] = Objects.EXIT
         self.space[0, 1] = Objects.EXIT

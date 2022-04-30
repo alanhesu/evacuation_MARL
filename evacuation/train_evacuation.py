@@ -14,7 +14,7 @@ import evacuation_v1
 # from callbacks import SaveOnBestTrainingRewardCallback
 
 log_dir = './log'
-timesteps = 2e6
+timesteps = 1e5
 env = evacuation_v1.parallel_env(despawn=False)
 # env = Monitor(env, log_dir)
 # env = pistonball_v6.env()
