@@ -8,10 +8,8 @@ from enum import IntEnum, auto
 
 import numpy as np
 import pygame as pg
-import pymunk as pm
 from gym import spaces
 from gym.utils import EzPickle, seeding
-from pymunk import Vec2d
 import cv2
 
 from pettingzoo import AECEnv
