@@ -60,6 +60,9 @@ class Person:
         # Get list of positions of robots
         robots_pos = []
         robots_dist = []
+        min_pos = self.position
+        min_dist = np.Inf
+
         for i in range(space.shape[0]):
             for j in range(space.shape[1]):
                 if space[i][j] in [Objects.ROBOT, Objects.EXIT]:
@@ -97,9 +100,6 @@ class Person:
                             break
 
                     if not failure:
-                        # Add robot position to list
-                        robots_pos.append(robot_pos)
-
                         # Get distance between robot and person
                         robot_dist = (
                             get_distance(self.position, robot_pos)
@@ -108,69 +108,42 @@ class Person:
                             else get_distance(self.position, robot_pos)
                         )
 
-                        # Add robot distance to list
-                        robots_dist.append(robot_dist)
+                        if robot_dist < min_dist:
+                            # Update minimum distance and position
+                            min_dist = robot_dist
+                            min_pos = robot_pos
 
-        robot_actions = []
-        robot_delta_dists = []
-        robot_new_poses = []
+        robot_action = Directions.STAY
+        robot_delta_dist = np.Inf
+        robot_new_pose = self.position
 
-        if len(robots_pos):
-            # Find index of robot with minimum distance
-            robot_idx = np.argmin(robots_dist)
+        # Iterate through possible robot actions
+        for a in Directions:
+            # Get new position of person
+            new_pos = get_new_pos(a, self.position)
 
-            # Get robot position with minimum distance
-            robot_pos = robots_pos[robot_idx]
-            robot_dist = robots_dist[robot_idx]
-
-            # Choose action that moves person closer to robot
-
-            # Iterate through possible robot actions
-            for a in Directions:
-                # Get new position of person
-                new_pos = get_new_pos(a, self.position)
-
-                # Ensure new position is empty
-                if (
-                    space[tuple(new_pos.astype(int))] == Objects.EMPTY
-                    or space[tuple(new_pos.astype(int))] == Objects.EXIT
-                ):
-                    # Add action to list
-                    robot_actions.append(a)
-
-                    # Store new positions
-                    robot_new_poses.append(new_pos)
-
-                    # Get change in distance to robot
-                    robot_delta_dists.append(
-                        get_distance(new_pos, robot_pos)
-                        - get_distance(self.position, robot_pos)
-                    )
-
-        # min_robot_dist = min(robot_delta_dists) if len(robot_delta_dists) else np.Inf
-
-        if len(robot_delta_dists):
-            action_idx = np.argmin(robot_delta_dists)
-            action = robot_actions[action_idx]
-            new_pos = robot_new_poses[action_idx]
-        else:
-            # Done move
-            action = Directions.STAY
-
-            self.abandoned = True
-
-            # Keep same position
-            new_pos = self.position
+            # Ensure new position is empty
+            if (
+                space[tuple(new_pos.astype(int))] == Objects.EMPTY
+                or space[tuple(new_pos.astype(int))] == Objects.EXIT
+            ):
+                d = get_distance(new_pos, min_pos) - get_distance(
+                    self.position, min_pos
+                )
+                if d < robot_delta_dist:
+                    robot_action = a
+                    robot_delta_dist = d
+                    robot_new_pose = new_pos
 
         # Update state and action
         done = False
-        self.last_act = action
+        self.last_act = robot_action
         space[tuple(self.position.astype(int))] = Objects.EMPTY
-        if space[tuple(new_pos.astype(int))] == Objects.EMPTY:
-            space[tuple(new_pos.astype(int))] = Objects.PERSON
+        if space[tuple(robot_new_pose.astype(int))] == Objects.EMPTY:
+            space[tuple(robot_new_pose.astype(int))] = Objects.PERSON
         else:
             done = True
-        self.position = new_pos
+        self.position = robot_new_pose
 
         return done
 
