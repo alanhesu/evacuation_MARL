@@ -112,7 +112,7 @@ class Person:
                             min_pos = robot_pos
 
         robot_action = Directions.STAY
-        robot_delta_dist = np.Inf
+        robot_delta_dist = 0
         robot_new_pose = self.position
 
         # Iterate through possible robot actions
