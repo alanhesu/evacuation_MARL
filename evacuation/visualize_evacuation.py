@@ -9,7 +9,7 @@ env = evacuation_v1.env()
 # env = ss.resize_v0(env, x_size=84, y_size=84)
 # env = ss.frame_stack_v1(env, 3)
 
-model = PPO.load("evac_policy")
+model = PPO.load("evac_policy1", despawn=False)
 
 env.reset()
 for agent in env.agent_iter():
