@@ -39,10 +39,11 @@ class Objects(IntEnum):
 
 
 class Person:
-    def __init__(self, pos, num, space):
+    def __init__(self, pos, num, space, exits):
         self.id = num
 
         self.reset(pos, space)
+        self.exits = exits # store the exits because they never change
 
     def reset(self, pos, space):
         self.position = np.array(pos)
@@ -50,7 +51,7 @@ class Person:
         self.last_act = Directions.STAY
         self.abandoned = False
 
-    def update(self, space):
+    def update(self, space, robot_positions):
         # Find the closest robot and move in the direction of it
 
         # Find closest robot
@@ -59,55 +60,58 @@ class Person:
         min_pos = self.position
         min_dist = np.Inf
 
-        for i in range(space.shape[0]):
-            for j in range(space.shape[1]):
-                if space[i][j] in [Objects.ROBOT, Objects.EXIT]:
-                    failure = False
-                    # Store robot position
-                    robot_pos = (i, j)
+        positions = [tuple(x) for x in self.exits] + [value for value in robot_positions.values()]
 
-                    # Get line from person to robot (idx 0 is y, idx 1 is x)
-                    m = (robot_pos[0] - self.position[0]) / (
-                        robot_pos[1] - self.position[1] + 1e-12
-                    )
-                    b = robot_pos[0] - m * robot_pos[1]
+        for robot_pos in positions:
+            # see if humans can see depending on their vision range
+            if (get_distance(self.position, robot_pos) > const.HUMAN_VISION):
+                continue
 
-                    a = -m
-                    c = -b
-                    b = 1
+            failure = False
+            i, j = robot_pos
 
-                    for k in range(
-                        min([robot_pos[0], self.position[0]]),
-                        max([robot_pos[0], self.position[0]]) + 1,
-                    ):
-                        for l in range(
-                            min([robot_pos[1], self.position[1]]),
-                            max([robot_pos[1], self.position[1]]) + 1,
-                        ):
-                            if space[k][l] == Objects.WALL:
-                                d = abs(a * l + b * k + c) / ((a ** 2 + b ** 2) ** 0.5)
+            # Get line from person to robot (idx 0 is y, idx 1 is x)
+            m = (robot_pos[0] - self.position[0]) / (
+                robot_pos[1] - self.position[1] + 1e-12
+            )
+            b = robot_pos[0] - m * robot_pos[1]
 
-                                if d < (2 ** 0.5 / 2 - 0.01):
-                                    failure = True
-                                    break
-                            if failure:
-                                break
-                        if failure:
+            a = -m
+            c = -b
+            b = 1
+
+            for k in range(
+                min([robot_pos[0], self.position[0]]),
+                max([robot_pos[0], self.position[0]]) + 1,
+            ):
+                for l in range(
+                    min([robot_pos[1], self.position[1]]),
+                    max([robot_pos[1], self.position[1]]) + 1,
+                ):
+                    if space[k][l] == Objects.WALL:
+                        d = abs(a * l + b * k + c) / ((a ** 2 + b ** 2) ** 0.5)
+
+                        if d < (2 ** 0.5 / 2 - 0.01):
+                            failure = True
                             break
+                    if failure:
+                        break
+                if failure:
+                    break
 
-                    if not failure:
-                        # Get distance between robot and person
-                        robot_dist = (
-                            get_distance(self.position, robot_pos)
-                            + const.ROBOT_EXIT_RATIO
-                            if space[i][j] == Objects.ROBOT
-                            else get_distance(self.position, robot_pos)
-                        )
+            if not failure:
+                # Get distance between robot and person
+                robot_dist = (
+                    get_distance(self.position, robot_pos)
+                    + const.ROBOT_EXIT_RATIO
+                    if space[i][j] == Objects.ROBOT
+                    else get_distance(self.position, robot_pos)
+                )
 
-                        if robot_dist < min_dist:
-                            # Update minimum distance and position
-                            min_dist = robot_dist
-                            min_pos = robot_pos
+                if robot_dist < min_dist:
+                    # Update minimum distance and position
+                    min_dist = robot_dist
+                    min_pos = robot_pos
 
         robot_action = Directions.STAY
         robot_delta_dist = 0
@@ -303,20 +307,23 @@ class raw_env(AECEnv, EzPickle):
         # populate an array of humans (these aren't agents)
         self.humans = {}
         for num, pos in enumerate(human_positions):
-            human = Person(pos, num, self.space)
+            human = Person(pos, num, self.space, self.exits)
             identifier = f"human_{num}"
             self.humans[identifier] = human
 
         # generate random positions for each robot
-        robot_positions = self._randpos(const.NUM_ROBOTS)
+        robot_pos = self._randpos(const.NUM_ROBOTS)
 
         # populate agents with robots given positions
         self.robots = {}
-        for num, pos in enumerate(robot_positions):
+        for num, pos in enumerate(robot_pos):
             robot = Robot(pos, num, self.space, self.exits)
             identifier = f"robot_{num}"
             self.robots[identifier] = robot
             self.agents.append(identifier)
+
+        # keep a dictionary of robot positions
+        self.robot_positions = dict(zip(self.agents, robot_pos))
 
         # populate action spaces for each agent
         self.action_spaces = {}
@@ -391,12 +398,16 @@ class raw_env(AECEnv, EzPickle):
             agent = self.robots[agent_id]
 
         self.rewards[agent_id], self.dones[agent_id] = agent.update(action, self.space)
+        if (self.dones[agent_id]):
+            self.robot_positions[agent_id] = (-1, -1)
+        else:
+            self.robot_positions[agent_id] = tuple(agent.position.astype(int))
 
         if all_agents_updated:
             for human_id in self.humans:
                 if not self.human_dones[human_id]:
                     self.human_dones[human_id] = self.humans[human_id].update(
-                        self.space
+                        self.space, self.robot_positions
                     )
 
         self.frame += 1
@@ -412,8 +423,6 @@ class raw_env(AECEnv, EzPickle):
         if self.despawn:
             self._dones_step_first()
 
-        # self.render()
-        # time.sleep(0.05)
 
     def reset(self):
         # print('reset')
@@ -422,9 +431,10 @@ class raw_env(AECEnv, EzPickle):
 
         self.space = copy.deepcopy(self.space_init)
 
-        robot_positions = self._randpos(const.NUM_ROBOTS)
+        robot_pos = self._randpos(const.NUM_ROBOTS)
+        self.robot_positions = dict(zip(self.agents, robot_pos))
         for i, r in enumerate(self.robots.values()):
-            r.reset(robot_positions[i], self.space)
+            r.reset(robot_pos[i], self.space)
 
         human_positions = self._randpos(const.NUM_PEOPLE)
         for i, h in enumerate(self.humans.values()):
