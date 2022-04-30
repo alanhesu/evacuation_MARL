@@ -158,6 +158,15 @@ class Person:
                 # Get new position of person
                 new_pos = get_new_pos(a, self.position)
 
+                dist_to_bot = get_distance(new_pos, min_pos)
+                # print(dist_to_bot, dist_to_bot < 2 ** 0.5 + 1e-12)
+                if (
+                    min_dist < np.inf
+                    and dist_to_bot < 2 ** 0.5 + 1e-12
+                    and space[min_pos] == Objects.ROBOT
+                ):
+                    continue
+
                 # Ensure new position is empty
                 if space[tuple(new_pos.astype(int))] in [Objects.EMPTY, Objects.EXIT]:
                     d = get_distance(new_pos, min_pos) - get_distance(
@@ -548,7 +557,7 @@ class raw_env(AECEnv, EzPickle):
             for human_id in self.humans:
                 if not self.human_dones[human_id]:
                     human = self.humans[human_id]
-                    color = (0, 0, 255)
+                    color = (125, 125, 255)
                     r, c = tuple(human.position)
                     pg.draw.circle(
                         self.screen,
@@ -610,7 +619,7 @@ class raw_env(AECEnv, EzPickle):
         elif action == Directions.STAY:
             p2 = p1 + np.array([0, 0]) * res // 2
 
-        pg.draw.line(self.screen, color, (p1[1], p1[0]), (p2[1], p2[0]))
+        pg.draw.line(self.screen, color, (p1[1], p1[0]), (p2[1], p2[0]), width=2)
 
 
 def get_distance(p1, p2):
