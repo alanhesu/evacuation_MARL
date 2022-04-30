@@ -9,10 +9,9 @@ import random
 
 import numpy as np
 import pygame as pg
-import pymunk as pm
 from gym import spaces
 from gym.utils import EzPickle, seeding
-from pymunk import Vec2d
+import cv2
 
 from pettingzoo import AECEnv
 from pettingzoo.utils import agent_selector, wrappers
@@ -32,7 +31,6 @@ class Directions(IntEnum):
     UPLEFT = 7
     STAY = 8
 
-
 class Objects(IntEnum):
     EMPTY = 0
     WALL = 1
@@ -42,10 +40,11 @@ class Objects(IntEnum):
 
 
 class Person:
-    def __init__(self, pos, num, space):
+    def __init__(self, pos, num, space, exits):
         self.id = num
 
         self.reset(pos, space)
+        self.exits = exits # store the exits because they never change
 
     def reset(self, pos, space):
         self.position = np.array(pos)
@@ -53,7 +52,7 @@ class Person:
         self.last_act = Directions.STAY
         self.abandoned = False
 
-    def update(self, space):
+    def update(self, space, robot_positions):
         # Find the closest robot and move in the direction of it
 
         # Find closest robot
@@ -62,58 +61,61 @@ class Person:
         min_pos = self.position
         min_dist = np.Inf
 
-        for i in range(space.shape[0]):
-            for j in range(space.shape[1]):
-                if space[i][j] in [Objects.ROBOT, Objects.EXIT]:
-                    failure = False
-                    # Store robot position
-                    robot_pos = (i, j)
+        positions = [tuple(x) for x in self.exits] + [value for value in robot_positions.values()]
 
-                    # Get line from person to robot (idx 0 is y, idx 1 is x)
-                    m = (robot_pos[0] - self.position[0]) / (
-                        robot_pos[1] - self.position[1] + 1e-12
-                    )
-                    b = robot_pos[0] - m * robot_pos[1]
+        for robot_pos in positions:
+            # see if humans can see depending on their vision range
+            if (get_distance(self.position, robot_pos) > const.HUMAN_VISION):
+                continue
 
-                    a = -m
-                    c = -b
-                    b = 1
+            failure = False
+            i, j = robot_pos
 
-                    for k in range(
-                        min([robot_pos[0], self.position[0]]),
-                        max([robot_pos[0], self.position[0]]) + 1,
-                    ):
-                        for l in range(
-                            min([robot_pos[1], self.position[1]]),
-                            max([robot_pos[1], self.position[1]]) + 1,
-                        ):
-                            if space[k][l] == Objects.WALL:
-                                d = abs(a * l + b * k + c) / ((a ** 2 + b ** 2) ** 0.5)
+            # Get line from person to robot (idx 0 is y, idx 1 is x)
+            m = (robot_pos[0] - self.position[0]) / (
+                robot_pos[1] - self.position[1] + 1e-12
+            )
+            b = robot_pos[0] - m * robot_pos[1]
 
-                                if d < (2 ** 0.5 / 2 - 0.01):
-                                    failure = True
-                                    break
-                            if failure:
-                                break
-                        if failure:
+            a = -m
+            c = -b
+            b = 1
+
+            for k in range(
+                min([robot_pos[0], self.position[0]]),
+                max([robot_pos[0], self.position[0]]) + 1,
+            ):
+                for l in range(
+                    min([robot_pos[1], self.position[1]]),
+                    max([robot_pos[1], self.position[1]]) + 1,
+                ):
+                    if space[k][l] == Objects.WALL:
+                        d = abs(a * l + b * k + c) / ((a ** 2 + b ** 2) ** 0.5)
+
+                        if d < (2 ** 0.5 / 2 - 0.01):
+                            failure = True
                             break
+                    if failure:
+                        break
+                if failure:
+                    break
 
-                    if not failure:
-                        # Get distance between robot and person
-                        robot_dist = (
-                            get_distance(self.position, robot_pos)
-                            + const.ROBOT_EXIT_RATIO
-                            if space[i][j] == Objects.ROBOT
-                            else get_distance(self.position, robot_pos)
-                        )
+            if not failure:
+                # Get distance between robot and person
+                robot_dist = (
+                    get_distance(self.position, robot_pos)
+                    + const.ROBOT_EXIT_RATIO
+                    if space[i][j] == Objects.ROBOT
+                    else get_distance(self.position, robot_pos)
+                )
 
-                        if robot_dist < min_dist:
-                            # Update minimum distance and position
-                            min_dist = robot_dist
-                            min_pos = robot_pos
+                if robot_dist < min_dist:
+                    # Update minimum distance and position
+                    min_dist = robot_dist
+                    min_pos = robot_pos
 
         robot_action = Directions.STAY
-        robot_delta_dist = np.Inf
+        robot_delta_dist = 0
         robot_new_pose = self.position
 
         prob = random.random()
@@ -178,13 +180,13 @@ class Person:
 
 
 class Robot:
-    def __init__(self, pos, num, space):
+    def __init__(self, pos, num, space, exits):
         self.id = num
 
         self.reset(pos, space)
         self.dist_exp = 1
-        # self.max_dist = get_distance([0,0], space.shape)
         self.max_dist = np.sqrt(2)
+        self.exits = exits # store the exits because they never change
 
     def reset(self, pos, space):
         self.position = np.array(pos)
@@ -217,6 +219,8 @@ class Robot:
                 # print('exit')
                 space[tuple(self.position.astype(int))] = Objects.EMPTY
                 done = True
+            elif (space[tuple(newpos.astype(int))] == Objects.ROBOT):
+                reward = const.COLLISION_PENALTY
             else:
                 reward = const.WALL_PENALTY
         else:
@@ -226,8 +230,13 @@ class Robot:
             self.position = newpos
 
             # add distance to goal to reward
-            dist = get_distance(self.position, np.array([0, 2]))
-            # R_goal = (1 - dist**self.dist_exp) - (1 - self.prev_dist**self.dist_exp)
+            # get the closest exit
+            mindist = np.inf
+            for ex in self.exits:
+                dist = get_distance(self.position, ex)
+                if (dist < mindist):
+                    mindist = dist
+            dist = mindist
             R_goal = (self.prev_dist - dist) / self.max_dist
             self.prev_dist = dist
             reward += R_goal
@@ -271,18 +280,20 @@ class raw_env(AECEnv, EzPickle):
         )
 
         # initialize space
-        self.space = np.zeros((const.MAP_HEIGHT, const.MAP_WIDTH), dtype="uint8")
+        self.space = np.zeros((const.MAP_HEIGHT, const.MAP_WIDTH), dtype='uint8')
+        pad = const.OBSERVE_SIZE//2
+        self.padded_space = np.ones((const.MAP_HEIGHT + pad*2, const.MAP_HEIGHT + pad*2))*Objects.WALL
 
-        # TODO: initialize walls
+        # initialize walls based on an image file
+        img = cv2.imread("wall_1.jpg", cv2.IMREAD_GRAYSCALE)
         for r in range(0, const.MAP_HEIGHT):
             for c in range(0, const.MAP_WIDTH):
-                if (
-                    r == 0
-                    or c == 0
-                    or r == const.MAP_HEIGHT - 1
-                    or c == const.MAP_WIDTH - 1
-                ):
-                    self.space[r, c] = Objects.WALL
+                if (r == 0 or c == 0
+                    or r == const.MAP_HEIGHT-1
+                    or c == const.MAP_WIDTH-1):
+                    self.space[r,c] = Objects.WALL
+                # elif img[r,c] < 200:
+                    # self.space[r,c] = Objects.WALL
 
         # randomly generate exit locations
         def randexit():
@@ -304,13 +315,16 @@ class raw_env(AECEnv, EzPickle):
 
         num = 0
         # while num < const.NUM_EXITS:
-        # pos = randexit()
-        # if (self.space[pos[0]] != Objects.EXIT or self.space[pos[1]] != Objects.EXIT):
-        # num += 1
+            # pos = randexit()
+            # if (self.space[pos[0]] != Objects.EXIT or self.space[pos[1]] != Objects.EXIT):
+                # num += 1
         # self.space[pos[0]] = Objects.EXIT
         # self.space[pos[1]] = Objects.EXIT
+        self.exits = []
         self.space[0, 1] = Objects.EXIT
+        self.exits.append([0, 1])
         self.space[0, 2] = Objects.EXIT
+        self.exits.append([0, 2])
 
         self.space_init = copy.deepcopy(self.space)
 
@@ -320,20 +334,23 @@ class raw_env(AECEnv, EzPickle):
         # populate an array of humans (these aren't agents)
         self.humans = {}
         for num, pos in enumerate(human_positions):
-            human = Person(pos, num, self.space)
+            human = Person(pos, num, self.space, self.exits)
             identifier = f"human_{num}"
             self.humans[identifier] = human
 
         # generate random positions for each robot
-        robot_positions = self._randpos(const.NUM_ROBOTS)
+        robot_pos = self._randpos(const.NUM_ROBOTS)
 
         # populate agents with robots given positions
         self.robots = {}
-        for num, pos in enumerate(robot_positions):
-            robot = Robot(pos, num, self.space)
+        for num, pos in enumerate(robot_pos):
+            robot = Robot(pos, num, self.space, self.exits)
             identifier = f"robot_{num}"
             self.robots[identifier] = robot
             self.agents.append(identifier)
+
+        # keep a dictionary of robot positions
+        self.robot_positions = dict(zip(self.agents, robot_pos))
 
         # populate action spaces for each agent
         self.action_spaces = {}
@@ -346,8 +363,12 @@ class raw_env(AECEnv, EzPickle):
 
         for r in self.robots:
             self.last_observation[r] = None
+            if (const.OBSERVE_SIZE == 0):
+                obs_shape = (const.MAP_HEIGHT, const.MAP_WIDTH)
+            else:
+                obs_shape = (const.OBSERVE_SIZE, const.OBSERVE_SIZE)
             self.observation_spaces[r] = spaces.Box(
-                low=0, high=4, shape=const.ROBOT_OBSERV_SHAPE, dtype=np.uint8
+                low=0, high=4, shape=obs_shape, dtype=np.uint8
             )
 
         self.possible_agents = self.agents[:]
@@ -362,7 +383,18 @@ class raw_env(AECEnv, EzPickle):
     def observe(self, agent):
         observation = None
         # populate current observation
-        observation = self.space
+        if (const.OBSERVE_SIZE == 0):
+            # if 0, then just use the state space
+            observation = self.space
+        else:
+            pad = const.OBSERVE_SIZE//2
+            self.padded_space[pad:-pad,pad:-pad] = self.space
+
+            if (agent in self.agents):
+                pos = self.robots[agent].position
+            r = pos[0]
+            c = pos[1]
+            observation = self.padded_space[r:r+const.OBSERVE_SIZE,c:c+const.OBSERVE_SIZE]
 
         self.last_observation[agent] = observation
 
@@ -393,12 +425,16 @@ class raw_env(AECEnv, EzPickle):
             agent = self.robots[agent_id]
 
         self.rewards[agent_id], self.dones[agent_id] = agent.update(action, self.space)
+        if (self.dones[agent_id]):
+            self.robot_positions[agent_id] = (-1, -1)
+        else:
+            self.robot_positions[agent_id] = tuple(agent.position.astype(int))
 
         if all_agents_updated:
             for human_id in self.humans:
                 if not self.human_dones[human_id]:
                     self.human_dones[human_id] = self.humans[human_id].update(
-                        self.space
+                        self.space, self.robot_positions
                     )
 
         self.frame += 1
@@ -414,8 +450,6 @@ class raw_env(AECEnv, EzPickle):
         if self.despawn:
             self._dones_step_first()
 
-        # self.render()
-        # time.sleep(0.05)
 
     def reset(self):
         # print('reset')
@@ -424,9 +458,10 @@ class raw_env(AECEnv, EzPickle):
 
         self.space = copy.deepcopy(self.space_init)
 
-        robot_positions = self._randpos(const.NUM_ROBOTS)
+        robot_pos = self._randpos(const.NUM_ROBOTS)
+        self.robot_positions = dict(zip(self.agents, robot_pos))
         for i, r in enumerate(self.robots.values()):
-            r.reset(robot_positions[i], self.space)
+            r.reset(robot_pos[i], self.space)
 
         human_positions = self._randpos(const.NUM_PEOPLE)
         for i, h in enumerate(self.humans.values()):
@@ -520,6 +555,11 @@ class raw_env(AECEnv, EzPickle):
             pg.display.flip()
 
     def close(self):
+        '''
+        Close should release any graphical displays, subprocesses, network connections
+        or any other environment data which should not be kept around after the
+        user is no longer using the environment.
+        '''
         if not self.closed:
             self.closed = True
             if self.rendering:
