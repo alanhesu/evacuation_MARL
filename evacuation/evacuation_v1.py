@@ -119,7 +119,6 @@ class Person:
             new_pos = get_new_pos(a, self.position)
 
             dist_to_bot = get_distance(new_pos, min_pos)
-            print(dist_to_bot, dist_to_bot < 2**.5 + 1e-12)
             if (min_dist < np.inf and dist_to_bot < 2**.5 + 1e-12 and space[min_pos] == Objects.ROBOT):
                 continue
 
@@ -251,6 +250,8 @@ class raw_env(AECEnv, EzPickle):
 
         # initialize space
         self.space = np.zeros((const.MAP_HEIGHT, const.MAP_WIDTH), dtype='uint8')
+        pad = const.OBSERVE_SIZE//2
+        self.padded_space = np.ones((const.MAP_HEIGHT + pad*2, const.MAP_HEIGHT + pad*2))*Objects.WALL
 
         # initialize walls based on an image file
         img = cv2.imread("wall_1.jpg", cv2.IMREAD_GRAYSCALE)
@@ -260,8 +261,8 @@ class raw_env(AECEnv, EzPickle):
                     or r == const.MAP_HEIGHT-1
                     or c == const.MAP_WIDTH-1):
                     self.space[r,c] = Objects.WALL
-                elif img[r,c] < 200:
-                    self.space[r,c] = Objects.WALL
+                # elif img[r,c] < 200:
+                    # self.space[r,c] = Objects.WALL
 
         # randomly generate exit locations
         def randexit():
@@ -328,8 +329,12 @@ class raw_env(AECEnv, EzPickle):
 
         for r in self.robots:
             self.last_observation[r] = None
+            if (const.OBSERVE_SIZE == 0):
+                obs_shape = (const.MAP_HEIGHT, const.MAP_WIDTH)
+            else:
+                obs_shape = (const.OBSERVE_SIZE, const.OBSERVE_SIZE)
             self.observation_spaces[r] = spaces.Box(
-                low=0, high=4, shape=const.ROBOT_OBSERV_SHAPE, dtype=np.uint8
+                low=0, high=4, shape=obs_shape, dtype=np.uint8
             )
 
         self.possible_agents = self.agents[:]
@@ -344,7 +349,18 @@ class raw_env(AECEnv, EzPickle):
     def observe(self, agent):
         observation = None
         # populate current observation
-        observation = self.space
+        if (const.OBSERVE_SIZE == 0):
+            # if 0, then just use the state space
+            observation = self.space
+        else:
+            pad = const.OBSERVE_SIZE//2
+            self.padded_space[pad:-pad,pad:-pad] = self.space
+
+            if (agent in self.agents):
+                pos = self.robots[agent].position
+            r = pos[0]
+            c = pos[1]
+            observation = self.padded_space[r:r+const.OBSERVE_SIZE,c:c+const.OBSERVE_SIZE]
 
         self.last_observation[agent] = observation
 
