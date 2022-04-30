@@ -121,10 +121,7 @@ class Person:
             new_pos = get_new_pos(a, self.position)
 
             # Ensure new position is empty
-            if (
-                space[tuple(new_pos.astype(int))] == Objects.EMPTY
-                or space[tuple(new_pos.astype(int))] == Objects.EXIT
-            ):
+            if space[tuple(new_pos.astype(int))] in [Objects.EMPTY, Objects.EXIT]:
                 d = get_distance(new_pos, min_pos) - get_distance(
                     self.position, min_pos
                 )
