@@ -144,7 +144,7 @@ class Person:
                     possible_positions.append(new_pos)
 
             # Randomly sample the list
-            idx = random.randint(0, len(possible_actions) + 1)
+            idx = random.randint(0, len(possible_actions) - 1)
 
             # Update robot_action and robot_new_pos
             robot_action = possible_actions[idx]
@@ -503,7 +503,7 @@ class raw_env(AECEnv, EzPickle):
                         const.MAP_HEIGHT * const.PIXEL_RESOLUTION,
                     )
                 )
-                self.display_screen = pg.display.set_mode(const.SCREEN_SIZE)
+                self.display_screen = pg.display.set_mode(const.SCREEN_SIZE, display=1)
 
             res = const.PIXEL_RESOLUTION
             self.screen.fill((255, 255, 255))
