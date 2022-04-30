@@ -192,6 +192,7 @@ class Person:
 
 class Robot:
     def __init__(self, pos, num, space, exits):
+        self.hubot = False
         self.id = num
 
         self.reset(pos, space)
@@ -216,14 +217,7 @@ class Robot:
         if action == None:
             return 0, True
 
-        if (
-            np.min(newpos) < 0
-            or newpos[0] >= const.MAP_HEIGHT
-            or newpos[1] >= const.MAP_WIDTH
-        ):
-            # check out of bounds
-            reward = const.OOB_PENALTY
-        elif space[tuple(newpos.astype(int))] != Objects.EMPTY:
+        if space[tuple(newpos.astype(int))] != Objects.EMPTY:
             # check collision
             if space[tuple(newpos.astype(int))] == Objects.EXIT:
                 reward = const.EXIT_REWARD
@@ -240,20 +234,48 @@ class Robot:
             space[tuple(newpos.astype(int))] = Objects.ROBOT
             self.position = newpos
 
-            # add distance to goal to reward
-            # get the closest exit
-            mindist = np.inf
-            for ex in self.exits:
-                dist = get_distance(self.position, ex)
-                if dist < mindist:
-                    mindist = dist
-            dist = mindist
-            R_goal = (self.prev_dist - dist) / self.max_dist
-            self.prev_dist = dist
-            reward += R_goal
-            reward += const.MOVE_PENALTY
+            count = 0
+            for r in range(space.shape[0]):
+                for c in range(space.shape[1]):
+                    if space[r][c] == Objects.PERSON:
+                        count += 1
+
+            reward = const.NUM_PEOPLE - count
+
+            # # add distance to goal to reward
+            # # get the closest exit
+            # mindist = np.inf
+            # for ex in self.exits:
+            #     dist = get_distance(self.position, ex)
+            #     if dist < mindist:
+            #         mindist = dist
+            # dist = mindist
+            # R_goal = (self.prev_dist - dist) / self.max_dist
+            # self.prev_dist = dist
+            # reward += R_goal
+            # reward += const.MOVE_PENALTY
 
         return reward, done
+
+
+class Hubot:
+    def __init__(self):
+        self.hubot = True
+        self.reset(0, 0)
+
+    def reset(self, pos, space):
+        self.position = np.array([-1, -1])
+
+    def update(self, action, space):
+        reward = 0
+        for i in range(space.shape[0]):
+            for j in range(space.shape[1]):
+                if space[i, j] == Objects.PERSON:
+                    reward += 1
+
+        done = not bool(reward)
+
+        return -reward, done
 
 
 def env(**kwargs):
@@ -366,6 +388,13 @@ class raw_env(AECEnv, EzPickle):
             self.robots[identifier] = robot
             self.agents.append(identifier)
 
+        # Create hubot for keeping track of humans
+        hubot = Hubot()
+        identifier = "hubot"
+        self.robots[identifier] = hubot
+        self.agents.append(identifier)
+        robot_pos.append(np.array([-1, -1]))
+
         # keep a dictionary of robot positions
         self.robot_positions = dict(zip(self.agents, robot_pos))
 
@@ -407,7 +436,9 @@ class raw_env(AECEnv, EzPickle):
             pad = const.OBSERVE_SIZE // 2
             self.padded_space[pad:-pad, pad:-pad] = self.space
 
-            if agent in self.agents:
+            if self.robots[agent].hubot:
+                pos = np.array([self.space.shape[0] // 2, self.space.shape[1] // 2])
+            elif agent in self.agents:
                 pos = self.robots[agent].position
             r = pos[0]
             c = pos[1]
@@ -446,6 +477,8 @@ class raw_env(AECEnv, EzPickle):
         self.rewards[agent_id], self.dones[agent_id] = agent.update(action, self.space)
         if self.dones[agent_id]:
             self.robot_positions[agent_id] = (-1, -1)
+        elif self.robots[agent_id].hubot:
+            pass
         else:
             self.robot_positions[agent_id] = tuple(agent.position.astype(int))
 
@@ -476,7 +509,7 @@ class raw_env(AECEnv, EzPickle):
 
         self.space = copy.deepcopy(self.space_init)
 
-        robot_pos = self._randpos(const.NUM_ROBOTS)
+        robot_pos = self._randpos(const.NUM_ROBOTS + 1)
         self.robot_positions = dict(zip(self.agents, robot_pos))
         for i, r in enumerate(self.robots.values()):
             r.reset(robot_pos[i], self.space)
@@ -542,7 +575,11 @@ class raw_env(AECEnv, EzPickle):
 
             # draw agents as circles and their last action as a line
             for agent_id in self.agents:
-                if agent_id in self.robots and not self.dones[agent_id]:
+                if (
+                    agent_id in self.robots
+                    and not self.dones[agent_id]
+                    and not self.robots[agent_id].hubot
+                ):
                     agent = self.robots[agent_id]
                     color = (0, 255, 0)
                     r, c = tuple(agent.position)

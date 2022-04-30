@@ -10,18 +10,28 @@ from pettingzoo.butterfly import knights_archers_zombies_v9, pistonball_v6
 from pettingzoo.utils import average_total_reward
 import supersuit as ss
 import evacuation_v1
+
 # from callbacks import SaveOnBestTrainingRewardCallback
 
-log_dir = './log'
+log_dir = "./log"
 timesteps = 5e5
 env = evacuation_v1.parallel_env(despawn=False)
 env = ss.black_death_v2(env)
 env = ss.pettingzoo_env_to_vec_env_v0(env)
-env = ss.concat_vec_envs_v0(env, 4, num_cpus=1, base_class='stable_baselines3')
+env = ss.concat_vec_envs_v0(env, 4, num_cpus=1, base_class="stable_baselines3")
 env = VecMonitor(env, log_dir)
 # model = PPO('MlpPolicy', env, verbose=3, learning_rate=1e-4, n_steps=2048, batch_size=256, tensorboard_log=log_dir)
-model = DQN('MlpPolicy', env, verbose=3, learning_rate=1e-4, batch_size=4096, tensorboard_log='./log/')
+model = DQN(
+    "MlpPolicy",
+    env,
+    verbose=3,
+    learning_rate=1e-4,
+    batch_size=4096,
+    tensorboard_log="./log/",
+    exploration_fraction=0.3,
+    exploration_final_eps=0.1,
+)
 model.learn(total_timesteps=timesteps)
-model.save("evac_policy1")
+model.save("evac_policy5")
 
-print('done')
+print("done")
