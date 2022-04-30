@@ -31,6 +31,7 @@ class Directions(IntEnum):
     UPLEFT = 7
     STAY = 8
 
+
 class Objects(IntEnum):
     EMPTY = 0
     WALL = 1
@@ -44,7 +45,7 @@ class Person:
         self.id = num
 
         self.reset(pos, space)
-        self.exits = exits # store the exits because they never change
+        self.exits = exits  # store the exits because they never change
 
     def reset(self, pos, space):
         self.position = np.array(pos)
@@ -61,11 +62,13 @@ class Person:
         min_pos = self.position
         min_dist = np.Inf
 
-        positions = [tuple(x) for x in self.exits] + [value for value in robot_positions.values()]
+        positions = [tuple(x) for x in self.exits] + [
+            value for value in robot_positions.values()
+        ]
 
         for robot_pos in positions:
             # see if humans can see depending on their vision range
-            if (get_distance(self.position, robot_pos) > const.HUMAN_VISION):
+            if get_distance(self.position, robot_pos) > const.HUMAN_VISION:
                 continue
 
             failure = False
@@ -103,8 +106,7 @@ class Person:
             if not failure:
                 # Get distance between robot and person
                 robot_dist = (
-                    get_distance(self.position, robot_pos)
-                    + const.ROBOT_EXIT_RATIO
+                    get_distance(self.position, robot_pos) + const.ROBOT_EXIT_RATIO
                     if space[i][j] == Objects.ROBOT
                     else get_distance(self.position, robot_pos)
                 )
@@ -116,7 +118,7 @@ class Person:
 
         robot_action = Directions.STAY
         robot_delta_dist = 0
-        robot_new_pose = self.position
+        robot_new_pos = self.position
 
         prob = random.random()
         if prob < const.PERSON_RAND:
@@ -144,9 +146,9 @@ class Person:
             # Randomly sample the list
             idx = random.randint(0, len(possible_actions) + 1)
 
-            # Update robot_action and robot_new_pose
+            # Update robot_action and robot_new_pos
             robot_action = possible_actions[idx]
-            robot_new_pose = possible_positions[idx]
+            robot_new_pos = possible_positions[idx]
 
         else:
             # Take best action
@@ -164,17 +166,17 @@ class Person:
                     if d < robot_delta_dist:
                         robot_action = a
                         robot_delta_dist = d
-                        robot_new_pose = new_pos
+                        robot_new_pos = new_pos
 
         # Update state and action
         done = False
         self.last_act = robot_action
         space[tuple(self.position.astype(int))] = Objects.EMPTY
-        if space[tuple(robot_new_pose.astype(int))] == Objects.EMPTY:
-            space[tuple(robot_new_pose.astype(int))] = Objects.PERSON
+        if space[tuple(robot_new_pos.astype(int))] == Objects.EMPTY:
+            space[tuple(robot_new_pos.astype(int))] = Objects.PERSON
         else:
             done = True
-        self.position = robot_new_pose
+        self.position = robot_new_pos
 
         return done
 
@@ -186,7 +188,7 @@ class Robot:
         self.reset(pos, space)
         self.dist_exp = 1
         self.max_dist = np.sqrt(2)
-        self.exits = exits # store the exits because they never change
+        self.exits = exits  # store the exits because they never change
 
     def reset(self, pos, space):
         self.position = np.array(pos)
@@ -219,7 +221,7 @@ class Robot:
                 # print('exit')
                 space[tuple(self.position.astype(int))] = Objects.EMPTY
                 done = True
-            elif (space[tuple(newpos.astype(int))] == Objects.ROBOT):
+            elif space[tuple(newpos.astype(int))] == Objects.ROBOT:
                 reward = const.COLLISION_PENALTY
             else:
                 reward = const.WALL_PENALTY
@@ -234,7 +236,7 @@ class Robot:
             mindist = np.inf
             for ex in self.exits:
                 dist = get_distance(self.position, ex)
-                if (dist < mindist):
+                if dist < mindist:
                     mindist = dist
             dist = mindist
             R_goal = (self.prev_dist - dist) / self.max_dist
@@ -280,20 +282,26 @@ class raw_env(AECEnv, EzPickle):
         )
 
         # initialize space
-        self.space = np.zeros((const.MAP_HEIGHT, const.MAP_WIDTH), dtype='uint8')
-        pad = const.OBSERVE_SIZE//2
-        self.padded_space = np.ones((const.MAP_HEIGHT + pad*2, const.MAP_HEIGHT + pad*2))*Objects.WALL
+        self.space = np.zeros((const.MAP_HEIGHT, const.MAP_WIDTH), dtype="uint8")
+        pad = const.OBSERVE_SIZE // 2
+        self.padded_space = (
+            np.ones((const.MAP_HEIGHT + pad * 2, const.MAP_HEIGHT + pad * 2))
+            * Objects.WALL
+        )
 
         # initialize walls based on an image file
         img = cv2.imread("wall_1.jpg", cv2.IMREAD_GRAYSCALE)
         for r in range(0, const.MAP_HEIGHT):
             for c in range(0, const.MAP_WIDTH):
-                if (r == 0 or c == 0
-                    or r == const.MAP_HEIGHT-1
-                    or c == const.MAP_WIDTH-1):
-                    self.space[r,c] = Objects.WALL
+                if (
+                    r == 0
+                    or c == 0
+                    or r == const.MAP_HEIGHT - 1
+                    or c == const.MAP_WIDTH - 1
+                ):
+                    self.space[r, c] = Objects.WALL
                 # elif img[r,c] < 200:
-                    # self.space[r,c] = Objects.WALL
+                # self.space[r,c] = Objects.WALL
 
         # randomly generate exit locations
         def randexit():
@@ -315,9 +323,9 @@ class raw_env(AECEnv, EzPickle):
 
         num = 0
         # while num < const.NUM_EXITS:
-            # pos = randexit()
-            # if (self.space[pos[0]] != Objects.EXIT or self.space[pos[1]] != Objects.EXIT):
-                # num += 1
+        # pos = randexit()
+        # if (self.space[pos[0]] != Objects.EXIT or self.space[pos[1]] != Objects.EXIT):
+        # num += 1
         # self.space[pos[0]] = Objects.EXIT
         # self.space[pos[1]] = Objects.EXIT
         self.exits = []
@@ -363,7 +371,7 @@ class raw_env(AECEnv, EzPickle):
 
         for r in self.robots:
             self.last_observation[r] = None
-            if (const.OBSERVE_SIZE == 0):
+            if const.OBSERVE_SIZE == 0:
                 obs_shape = (const.MAP_HEIGHT, const.MAP_WIDTH)
             else:
                 obs_shape = (const.OBSERVE_SIZE, const.OBSERVE_SIZE)
@@ -383,18 +391,20 @@ class raw_env(AECEnv, EzPickle):
     def observe(self, agent):
         observation = None
         # populate current observation
-        if (const.OBSERVE_SIZE == 0):
+        if const.OBSERVE_SIZE == 0:
             # if 0, then just use the state space
             observation = self.space
         else:
-            pad = const.OBSERVE_SIZE//2
-            self.padded_space[pad:-pad,pad:-pad] = self.space
+            pad = const.OBSERVE_SIZE // 2
+            self.padded_space[pad:-pad, pad:-pad] = self.space
 
-            if (agent in self.agents):
+            if agent in self.agents:
                 pos = self.robots[agent].position
             r = pos[0]
             c = pos[1]
-            observation = self.padded_space[r:r+const.OBSERVE_SIZE,c:c+const.OBSERVE_SIZE]
+            observation = self.padded_space[
+                r : r + const.OBSERVE_SIZE, c : c + const.OBSERVE_SIZE
+            ]
 
         self.last_observation[agent] = observation
 
@@ -425,7 +435,7 @@ class raw_env(AECEnv, EzPickle):
             agent = self.robots[agent_id]
 
         self.rewards[agent_id], self.dones[agent_id] = agent.update(action, self.space)
-        if (self.dones[agent_id]):
+        if self.dones[agent_id]:
             self.robot_positions[agent_id] = (-1, -1)
         else:
             self.robot_positions[agent_id] = tuple(agent.position.astype(int))
@@ -449,7 +459,6 @@ class raw_env(AECEnv, EzPickle):
         self._accumulate_rewards()
         if self.despawn:
             self._dones_step_first()
-
 
     def reset(self):
         # print('reset')
@@ -555,11 +564,11 @@ class raw_env(AECEnv, EzPickle):
             pg.display.flip()
 
     def close(self):
-        '''
+        """
         Close should release any graphical displays, subprocesses, network connections
         or any other environment data which should not be kept around after the
         user is no longer using the environment.
-        '''
+        """
         if not self.closed:
             self.closed = True
             if self.rendering:
