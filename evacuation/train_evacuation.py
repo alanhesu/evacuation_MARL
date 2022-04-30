@@ -13,7 +13,7 @@ import evacuation_v1
 # from callbacks import SaveOnBestTrainingRewardCallback
 
 log_dir = './log'
-timesteps = 1e5
+timesteps = 2e6
 env = evacuation_v1.parallel_env(despawn=False)
 env = ss.black_death_v2(env)
 env = ss.pettingzoo_env_to_vec_env_v0(env)

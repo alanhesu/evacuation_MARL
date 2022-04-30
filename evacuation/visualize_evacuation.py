@@ -24,7 +24,7 @@ for i in range(0, 10):
         if (reward == -1):
             print(reward, act)
         env.render()
-        time.sleep(0.05)
+        time.sleep(.05)
         if (not done):
             steps += 1
         if (all(value for value in env.dones.values())):

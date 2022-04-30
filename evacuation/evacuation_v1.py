@@ -120,6 +120,11 @@ class Person:
             # Get new position of person
             new_pos = get_new_pos(a, self.position)
 
+            dist_to_bot = get_distance(new_pos, min_pos)
+            print(dist_to_bot, dist_to_bot < 2**.5 + 1e-12)
+            if (min_dist < np.inf and dist_to_bot < 2**.5 + 1e-12 and space[min_pos] == Objects.ROBOT):
+                continue
+
             # Ensure new position is empty
             if (
                 space[tuple(new_pos.astype(int))] == Objects.EMPTY
@@ -147,13 +152,13 @@ class Person:
 
 
 class Robot:
-    def __init__(self, pos, num, space):
+    def __init__(self, pos, num, space, exits):
         self.id = num
 
         self.reset(pos, space)
         self.dist_exp = 1
-        # self.max_dist = get_distance([0,0], space.shape)
         self.max_dist = np.sqrt(2)
+        self.exits = exits # store the exits because they never change
 
     def reset(self, pos, space):
         self.position = np.array(pos)
@@ -197,8 +202,13 @@ class Robot:
             self.position = newpos
 
             # add distance to goal to reward
-            dist = get_distance(self.position, np.array([0, 2]))
-            # R_goal = (1 - dist**self.dist_exp) - (1 - self.prev_dist**self.dist_exp)
+            # get the closest exit
+            mindist = np.inf
+            for ex in self.exits:
+                dist = get_distance(self.position, ex)
+                if (dist < mindist):
+                    mindist = dist
+            dist = mindist
             R_goal = (self.prev_dist - dist) / self.max_dist
             self.prev_dist = dist
             reward += R_goal
@@ -280,8 +290,11 @@ class raw_env(AECEnv, EzPickle):
                 # num += 1
         # self.space[pos[0]] = Objects.EXIT
         # self.space[pos[1]] = Objects.EXIT
+        self.exits = []
         self.space[0, 1] = Objects.EXIT
+        self.exits.append([0, 1])
         self.space[0, 2] = Objects.EXIT
+        self.exits.append([0, 2])
 
         self.space_init = copy.deepcopy(self.space)
 
@@ -301,7 +314,7 @@ class raw_env(AECEnv, EzPickle):
         # populate agents with robots given positions
         self.robots = {}
         for num, pos in enumerate(robot_positions):
-            robot = Robot(pos, num, self.space)
+            robot = Robot(pos, num, self.space, self.exits)
             identifier = f"robot_{num}"
             self.robots[identifier] = robot
             self.agents.append(identifier)
