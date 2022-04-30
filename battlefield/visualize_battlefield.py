@@ -21,3 +21,4 @@ for agent in env.agent_iter():
     act = model.predict(obs, deterministic=True)[0] if not done else None
     env.step(act)
     env.render()
+

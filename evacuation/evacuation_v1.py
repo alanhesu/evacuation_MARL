@@ -12,6 +12,7 @@ import pymunk as pm
 from gym import spaces
 from gym.utils import EzPickle, seeding
 from pymunk import Vec2d
+import cv2
 
 from pettingzoo import AECEnv
 from pettingzoo.utils import agent_selector, wrappers
@@ -30,7 +31,6 @@ class Directions(IntEnum):
     LEFT = 6
     UPLEFT = 7
     STAY = 8
-
 
 class Objects(IntEnum):
     EMPTY = 0
@@ -186,6 +186,8 @@ class Robot:
                 # print('exit')
                 space[tuple(self.position.astype(int))] = Objects.EMPTY
                 done = True
+            elif (space[tuple(newpos.astype(int))] == Objects.ROBOT):
+                reward = const.COLLISION_PENALTY
             else:
                 reward = const.WALL_PENALTY
         else:
@@ -240,18 +242,18 @@ class raw_env(AECEnv, EzPickle):
         )
 
         # initialize space
-        self.space = np.zeros((const.MAP_HEIGHT, const.MAP_WIDTH), dtype="uint8")
+        self.space = np.zeros((const.MAP_HEIGHT, const.MAP_WIDTH), dtype='uint8')
 
-        # TODO: initialize walls
+        # initialize walls based on an image file
+        img = cv2.imread("wall_1.jpg", cv2.IMREAD_GRAYSCALE)
         for r in range(0, const.MAP_HEIGHT):
             for c in range(0, const.MAP_WIDTH):
-                if (
-                    r == 0
-                    or c == 0
-                    or r == const.MAP_HEIGHT - 1
-                    or c == const.MAP_WIDTH - 1
-                ):
-                    self.space[r, c] = Objects.WALL
+                if (r == 0 or c == 0
+                    or r == const.MAP_HEIGHT-1
+                    or c == const.MAP_WIDTH-1):
+                    self.space[r,c] = Objects.WALL
+                elif img[r,c] < 200:
+                    self.space[r,c] = Objects.WALL
 
         # randomly generate exit locations
         def randexit():
@@ -489,6 +491,11 @@ class raw_env(AECEnv, EzPickle):
             pg.display.flip()
 
     def close(self):
+        '''
+        Close should release any graphical displays, subprocesses, network connections
+        or any other environment data which should not be kept around after the
+        user is no longer using the environment.
+        '''
         if not self.closed:
             self.closed = True
             if self.rendering:
