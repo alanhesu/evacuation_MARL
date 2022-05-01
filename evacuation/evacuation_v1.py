@@ -203,6 +203,7 @@ class Robot:
         self.position = np.array(pos)
         space[pos] = Objects.ROBOT
         self.prev_dist = get_distance(self.position, np.array([0, 2]))
+        self.prev_hum_dist = np.sqrt(2)*space.shape[0]
         self.last_act = Directions.STAY
 
     def update(self, action, space, count_exited, human_positions):
@@ -219,6 +220,7 @@ class Robot:
         w_num_follow = 0
         w_goal = 0
         w_count_exited = 0
+        w_hum_dist = 0
 
         newpos = np.zeros(self.position.shape)
         done = False
@@ -227,6 +229,7 @@ class Robot:
         R_goal = 0
         R_collect = 0
         R_num_follow = 0
+        R_delta_hum = 0
         if action == None:
             return 0, True
 
@@ -263,8 +266,11 @@ class Robot:
 
             # add number of nearby humans and average distance to reward
             close_dists = []
+            maxdist_hum = -np.inf
             for pos in human_positions.values():
                 dist = get_distance(pos, self.position)
+                if (dist > maxdist_hum):
+                    maxdist_hum = dist
                 if dist < const.COLLECT_DIST:
                     close_dists.append(dist)
             num_humans = len(close_dists)
@@ -276,11 +282,17 @@ class Robot:
                 R_num_follow = num_humans / len(human_positions) + 1e-12
                 R_collect = np.mean(close_dists) / const.COLLECT_DIST
 
-            w_collect = .1
-            w_num_follow = 1
+            # add change in distance to farthest human to reward
+            R_delta_hum = (self.prev_hum_dist - maxdist_hum) / self.max_dist
+            self.prev_hum_dist = maxdist_hum
+            R_delta_hum = np.clip(R_delta_hum, -1, 1)
+
+            w_collect = 0
+            w_num_follow = 0
+            w_hum_dist = 1
 
             w_goal = 0
-            w_move_pen = 1
+            w_move_pen = 0
 
         weights = np.array(
             [
@@ -293,6 +305,7 @@ class Robot:
                 w_num_follow,
                 w_goal,
                 w_count_exited,
+                w_hum_dist
             ]
         )
 
@@ -308,6 +321,7 @@ class Robot:
             + weights[6] * R_num_follow
             + weights[7] * R_goal
             + weights[8] * count_exited
+            + weights[9] * R_delta_hum
         )
 
         reward = np.clip(reward, -1, 1)
