@@ -5,7 +5,7 @@ PIXEL_RESOLUTION = 30
 
 MAP_HEIGHT = 15
 MAP_WIDTH = 15
-OBSERVE_SIZE = 15  # must be zero or odd
+OBSERVE_SIZE = 0  # must be zero or odd
 FPS = 4
 STEPS_PER_FRAME = 2
 SPACE_STEP_DELTA = 1 / (FPS * STEPS_PER_FRAME)
