@@ -206,6 +206,7 @@ class Robot:
         self.prev_dist = get_distance(self.position, np.array([0, 2]))
         self.prev_hum_dist = np.sqrt(2) * space.shape[0]
         self.last_act = Directions.STAY
+        self.prev_hum_count = 0
 
     def update(self, action, space, count_exited, human_positions):
         # action = 0-8
@@ -277,6 +278,10 @@ class Robot:
                     close_dists.append(dist)
             num_humans = len(close_dists)
 
+            # humans gathered
+            humans_gathered = num_humans - self.prev_hum_count
+            self.prev_hum_count = num_humans
+
             if num_humans == 0:
                 R_num_follow = 0
                 R_collect = 0
@@ -290,12 +295,13 @@ class Robot:
             ) / self.max_dist_space - 0.5
             R_delta_hum = np.clip(R_delta_hum, -1, 1)
 
-            w_collect = 10
-            w_num_follow = 1
+            w_collect = 0
+            w_num_follow = 0
             w_hum_dist = 0
+            w_hum_gathered = 1
 
             w_goal = 1
-            w_move_pen = 0.0
+            w_move_pen = 0.1
 
         weights = np.array(
             [
@@ -308,6 +314,7 @@ class Robot:
                 w_goal,
                 w_count_exited,
                 w_hum_dist,
+                w_hum_gathered,
             ]
         )
 
@@ -323,9 +330,10 @@ class Robot:
             + weights[6] * R_goal
             + weights[7] * count_exited
             + weights[8] * R_delta_hum
+            + weights[9] * humans_gathered
         )
 
-        reward = np.clip(reward, -1, 1)
+        # reward = np.clip(reward, -1, 1)
 
         return reward, done
 
