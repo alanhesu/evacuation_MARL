@@ -210,7 +210,6 @@ class Robot:
         self.last_act = action
 
         # a bunch of weights so we can write the reward function in one line
-        w_oob = 0
         w_exit = 0
         w_collide = 0
         w_wall = 0
@@ -273,7 +272,6 @@ class Robot:
 
         weights = np.array(
             [
-                w_oob,
                 w_exit,
                 w_collide,
                 w_wall,
@@ -288,15 +286,14 @@ class Robot:
         weights = weights / np.sum(weights)
 
         reward = (
-            weights[0] * const.OOB_PENALTY
-            + weights[1] * const.EXIT_REWARD
-            + weights[2] * const.COLLISION_PENALTY
-            + weights[3] * const.WALL_PENALTY
-            + weights[4] * const.MOVE_PENALTY
-            + weights[5] * R_collect
-            + weights[6] * R_num_follow
-            + weights[7] * R_goal
-            + weights[8] * count_exited
+            +weights[0] * const.EXIT_REWARD
+            + weights[1] * const.COLLISION_PENALTY
+            + weights[2] * const.WALL_PENALTY
+            + weights[3] * const.MOVE_PENALTY
+            + weights[4] * R_collect
+            + weights[5] * R_num_follow
+            + weights[6] * R_goal
+            + weights[7] * count_exited
         )
 
         reward = np.clip(reward, -1, 1)
@@ -331,7 +328,6 @@ class raw_env(AECEnv, EzPickle):
             "render_modes": ["human"],
             "name": "evacuation_v1",
             "is_parallelizable": True,
-            "render_fps": const.FPS,
         }
 
         self.state_space = spaces.Box(

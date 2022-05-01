@@ -31,6 +31,6 @@ model = DQN(
     tensorboard_log="./log/",
 )
 model.learn(total_timesteps=timesteps)
-model.save("evac_policy5")
+model.save("evac_policy")
 
 print("done")
