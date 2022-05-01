@@ -3,3 +3,4 @@ __pycache__
 evacuation/log
 *.csv
 *.zip
+.DS_Store
