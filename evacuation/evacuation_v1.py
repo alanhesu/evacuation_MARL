@@ -247,7 +247,6 @@ class Robot:
             space[tuple(newpos.astype(int))] = Objects.ROBOT
             self.position = newpos
 
-            w_move_pen = 1
             if count_exited > 0:
                 w_count_exited = 1
 
@@ -259,13 +258,17 @@ class Robot:
                     close_dists.append(dist)
             num_humans = len(close_dists)
 
-            R_num_follow = num_humans/len(human_positions)
-            R_collect = np.mean(close_dists)/const.COLLECT_DIST
+            if (num_humans == 0):
+                R_num_follow = 0
+                R_collect = 0
+            else:
+                R_num_follow = num_humans/len(human_positions)+1e-12
+                R_collect = np.mean(close_dists)/const.COLLECT_DIST
 
             w_collect = 1
-            w_num_follow = 0
+            w_num_follow = 1
 
-            w_goal = .9
+            w_goal = 0
             w_move_pen = .1
 
         weights = np.array([w_oob,
