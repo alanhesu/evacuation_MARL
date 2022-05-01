@@ -63,7 +63,7 @@ def run_exit(a):
 keyboard.on_press_key("n", get_next)
 keyboard.on_press_key("q", run_exit)
 
-env = evacuation_v1.env(despawn=False)
+env = evacuation_v1.env(despawn=False, max_cycles=1000)
 # env = ss.color_reduction_v0(env, mode='B')
 # env = ss.resize_v0(env, x_size=84, y_size=84)
 # env = ss.frame_stack_v1(env, 3)
@@ -87,7 +87,7 @@ for i in range(100):
         space = env.state()
         if not done:
             steps += 1
-        if all(value for value in env.dones.values()):
+        if all(value for value in env.dones.values()) or next:
             num_dones = 0
             num_dones += list(human_dones.values()).count(True)
             for human_id in human_positions:
@@ -106,6 +106,7 @@ for i in range(100):
                     num_dones += 1
 
             percent_exited = num_dones / len(human_dones) * 100
+            next = False
             break
         # print(human_dones)
         # print(list(human_dones.values()).count(False))

@@ -44,14 +44,15 @@ class Person:
     def __init__(self, pos, num, space, exits):
         self.id = num
 
-        self.reset(pos, space)
+        self.reset(pos, space, exits)
         self.exits = exits  # store the exits because they never change
 
-    def reset(self, pos, space):
+    def reset(self, pos, space, exits):
         self.position = np.array(pos)
         space[pos] = Objects.PERSON
         self.last_act = Directions.STAY
         self.abandoned = False
+        self.exits = exits  # store the exits because they never change
 
     def update(self, space, robot_positions):
         # Find the closest robot and move in the direction of it
@@ -194,18 +195,19 @@ class Robot:
     def __init__(self, pos, num, space, exits):
         self.id = num
 
-        self.reset(pos, space)
+        self.reset(pos, space, exits)
         self.dist_exp = 1
         self.max_dist = np.sqrt(2)
         self.max_dist_space = np.sqrt(2) * space.shape[0]
         self.exits = exits  # store the exits because they never change
 
-    def reset(self, pos, space):
+    def reset(self, pos, space, exits):
         self.position = np.array(pos)
         space[pos] = Objects.ROBOT
         self.prev_dist = get_distance(self.position, np.array([0, 2]))
         self.prev_hum_dist = np.sqrt(2) * space.shape[0]
         self.last_act = Directions.STAY
+        self.exits = exits  # store the exits because they never change
 
     def update(self, action, space, count_exited, human_positions):
         # action = 0-8
@@ -278,8 +280,8 @@ class Robot:
             num_humans = len(close_dists)
 
             if num_humans == 0:
-                R_num_follow = 0
-                R_collect = 0
+                R_num_follow = -1
+                R_collect = -1
             else:
                 R_num_follow = num_humans / len(human_positions) + 1e-12
                 R_collect = np.mean(close_dists) / const.COLLECT_DIST
@@ -341,14 +343,15 @@ parallel_env = parallel_wrapper_fn(env)
 
 
 class raw_env(AECEnv, EzPickle):
-    def __init__(self, despawn=True, max_cycles=const.MAX_CYCLES):
-        EzPickle.__init__(self, despawn, max_cycles)
+    def __init__(self, despawn=True, max_cycles=const.MAX_CYCLES, rand_exit=const.RANDOM_EXIT):
+        EzPickle.__init__(self, despawn, max_cycles, rand_exit)
 
         pg.init()
 
         self.agents = []
         self.despawn = despawn
         self.max_cycles = max_cycles
+        self.rand_exit = rand_exit
 
         self.seed()
         self.closed = False
@@ -385,38 +388,9 @@ class raw_env(AECEnv, EzPickle):
                 # elif img[r,c] < 200:
                 # self.space[r,c] = Objects.WALL
 
-        # randomly generate exit locations
-        def randexit():
-            side = self.rng.randint(4)
-            if side == 0:
-                val = self.rng.randint(1, const.MAP_WIDTH)
-                pos = [(0, val - 1), (0, val)]
-            if side == 1:
-                val = self.rng.randint(1, const.MAP_WIDTH)
-                pos = [(const.MAP_HEIGHT - 1, val - 1), (const.MAP_HEIGHT - 1, val)]
-            if side == 2:
-                val = self.rng.randint(1, const.MAP_HEIGHT)
-                pos = [(val - 1, 0), (val, 0)]
-            if side == 3:
-                val = self.rng.randint(1, const.MAP_HEIGHT)
-                pos = [(val - 1, const.MAP_WIDTH - 1), (val, const.MAP_WIDTH - 1)]
-
-            return pos
-
-        num = 0
-        # while num < const.NUM_EXITS:
-        # pos = randexit()
-        # if (self.space[pos[0]] != Objects.EXIT or self.space[pos[1]] != Objects.EXIT):
-        # num += 1
-        # self.space[pos[0]] = Objects.EXIT
-        # self.space[pos[1]] = Objects.EXIT
-        self.exits = []
-        self.space[0, 1] = Objects.EXIT
-        self.exits.append([0, 1])
-        self.space[0, 2] = Objects.EXIT
-        self.exits.append([0, 2])
-
         self.space_init = copy.deepcopy(self.space)
+
+        self.exits = []
 
         # generate random positions for each human
         human_pos = self._randpos(const.NUM_PEOPLE)
@@ -565,15 +539,36 @@ class raw_env(AECEnv, EzPickle):
 
         self.space = copy.deepcopy(self.space_init)
 
+        # generate exits
+        num = 0
+        self.exits = []
+        if (self.rand_exit):
+            while num < const.NUM_EXITS:
+                pos = self._randexit()
+                if (self.space[pos[0]] != Objects.EXIT or self.space[pos[1]] != Objects.EXIT):
+                    num += 1
+                    self.exits.append([pos[0][0], pos[0][1]])
+                    self.exits.append([pos[1][0], pos[1][1]])
+        else:
+            if (const.NUM_EXITS >= 1):
+                self.exits.append([0, 1])
+                self.exits.append([0, 2])
+            if (const.NUM_EXITS >= 2):
+                self.exits.append([const.MAP_HEIGHT-1, const.MAP_WIDTH-3])
+                self.exits.append([const.MAP_HEIGHT-1, const.MAP_WIDTH-2])
+
+        for ex in self.exits:
+            self.space[tuple(ex)] = Objects.EXIT
+
         robot_pos = self._randpos(const.NUM_ROBOTS)
         self.robot_positions = dict(zip(self.agents, robot_pos))
         for i, r in enumerate(self.robots.values()):
-            r.reset(robot_pos[i], self.space)
+            r.reset(robot_pos[i], self.space, self.exits)
 
         human_pos = self._randpos(const.NUM_PEOPLE)
         self.human_positions = dict(zip(list(self.humans.keys()), human_pos))
         for i, h in enumerate(self.humans.values()):
-            h.reset(human_pos[i], self.space)
+            h.reset(human_pos[i], self.space, self.exits)
 
         self.agents = self.possible_agents[:]
         self.humans = self.possible_humans
@@ -713,6 +708,23 @@ class raw_env(AECEnv, EzPickle):
 
         pg.draw.line(self.screen, color, (p1[1], p1[0]), (p2[1], p2[0]), width=2)
 
+    def _randexit(self):
+        # randomly generate exit locations
+        side = self.rng.randint(4)
+        if side == 0:
+            val = self.rng.randint(1, const.MAP_WIDTH)
+            pos = [(0, val - 1), (0, val)]
+        if side == 1:
+            val = self.rng.randint(1, const.MAP_WIDTH)
+            pos = [(const.MAP_HEIGHT - 1, val - 1), (const.MAP_HEIGHT - 1, val)]
+        if side == 2:
+            val = self.rng.randint(1, const.MAP_HEIGHT)
+            pos = [(val - 1, 0), (val, 0)]
+        if side == 3:
+            val = self.rng.randint(1, const.MAP_HEIGHT)
+            pos = [(val - 1, const.MAP_WIDTH - 1), (val, const.MAP_WIDTH - 1)]
+
+        return pos
 
 def get_distance(p1, p2):
     return np.sqrt(np.power(p2[0] - p1[0], 2) + np.power(p2[1] - p1[1], 2))
