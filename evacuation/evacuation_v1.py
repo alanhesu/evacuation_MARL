@@ -262,7 +262,7 @@ class Robot:
             R_num_follow = num_humans/len(human_positions)
             R_collect = np.mean(close_dists)/const.COLLECT_DIST
 
-            w_collect = 0
+            w_collect = 1
             w_num_follow = 0
 
             w_goal = .9
@@ -281,19 +281,16 @@ class Robot:
         weights = weights/np.sum(weights)
 
         reward = (
-            w_oob * const.OOB_PENALTY
-            + w_exit * const.EXIT_REWARD
-            + w_collide * const.COLLISION_PENALTY
-            + w_wall * const.WALL_PENALTY
-            + w_move_pen * const.MOVE_PENALTY
-            + w_collect * R_collect
-            + w_num_follow*R_num_follow
-            + w_goal * R_goal
-            + w_count_exited * count_exited
+            weights[0] * const.OOB_PENALTY
+            + weights[1] * const.EXIT_REWARD
+            + weights[2] * const.COLLISION_PENALTY
+            + weights[3] * const.WALL_PENALTY
+            + weights[4] * const.MOVE_PENALTY
+            + weights[5] * R_collect
+            + weights[6] * R_num_follow
+            + weights[7] * R_goal
+            + weights[8] * count_exited
         )
-
-        print(w_oob + w_exit + w_collide + w_wall + w_move_pen + w_collect + w_num_follow + w_goal)
-        assert(w_oob + w_exit + w_collide + w_wall + w_move_pen + w_collect + w_num_follow + w_goal == 1)
 
         reward = np.clip(reward, -1, 1)
 
