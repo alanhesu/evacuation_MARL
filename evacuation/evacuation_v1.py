@@ -197,6 +197,7 @@ class Robot:
         self.reset(pos, space)
         self.dist_exp = 1
         self.max_dist = np.sqrt(2)
+        self.max_dist_space = np.sqrt(2)*space.shape[0]
         self.exits = exits  # store the exits because they never change
 
     def reset(self, pos, space):
@@ -262,6 +263,7 @@ class Robot:
                     mindist = dist
             dist = mindist
             R_goal = (self.prev_dist - dist) / self.max_dist
+            R_goal = 0
             self.prev_dist = dist
 
             # add number of nearby humans and average distance to reward
@@ -282,9 +284,8 @@ class Robot:
                 R_num_follow = num_humans / len(human_positions) + 1e-12
                 R_collect = np.mean(close_dists) / const.COLLECT_DIST
 
-            # add change in distance to farthest human to reward
-            R_delta_hum = (self.prev_hum_dist - maxdist_hum) / self.max_dist
-            self.prev_hum_dist = maxdist_hum
+            # add distance to farthest human to reward
+            R_delta_hum = (self.max_dist_space - maxdist_hum)/self.max_dist_space - .5
             R_delta_hum = np.clip(R_delta_hum, -1, 1)
 
             w_collect = 0
@@ -410,10 +411,10 @@ class raw_env(AECEnv, EzPickle):
         # self.space[pos[0]] = Objects.EXIT
         # self.space[pos[1]] = Objects.EXIT
         self.exits = []
-        self.space[0, 1] = Objects.EXIT
-        self.exits.append([0, 1])
-        self.space[0, 2] = Objects.EXIT
-        self.exits.append([0, 2])
+        # self.space[0, 1] = Objects.EXIT
+        # self.exits.append([0, 1])
+        # self.space[0, 2] = Objects.EXIT
+        # self.exits.append([0, 2])
 
         self.space_init = copy.deepcopy(self.space)
 
