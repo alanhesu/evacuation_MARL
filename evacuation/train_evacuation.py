@@ -29,6 +29,8 @@ model = DQN(
     learning_rate=1e-4,
     batch_size=4096,
     tensorboard_log="./log/",
+    exploration_fraction=0.3,
+    exploration_final_eps=0.1,
 )
 model.learn(total_timesteps=timesteps)
 model.save("evac_policy")
