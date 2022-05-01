@@ -224,6 +224,7 @@ class Robot:
         w_goal = 0
         w_count_exited = 0
         w_hum_dist = 0
+        w_hum_gathered = 0
 
         newpos = np.zeros(self.position.shape)
         done = False
