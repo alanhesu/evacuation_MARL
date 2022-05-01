@@ -3,15 +3,9 @@ import math
 SCREEN_SIZE = (600, 600)
 PIXEL_RESOLUTION = 30
 
-<<<<<<< Updated upstream
 MAP_HEIGHT = 15
 MAP_WIDTH = 15
 OBSERVE_SIZE = 0  # must be zero or odd
-=======
-MAP_HEIGHT = 20
-MAP_WIDTH = 20
-OBSERVE_SIZE = 11 # must be zero or odd
->>>>>>> Stashed changes
 FPS = 4
 STEPS_PER_FRAME = 2
 SPACE_STEP_DELTA = 1 / (FPS * STEPS_PER_FRAME)
