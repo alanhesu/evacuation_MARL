@@ -62,12 +62,13 @@ def exit(a):
 keyboard.on_press_key("n", get_next)
 keyboard.on_press_key("q", exit)
 
-env = evacuation_v1.env(despawn=False)
+env = evacuation_v1.env(despawn=False, max_cycles=1000)
 # env = ss.color_reduction_v0(env, mode='B')
 # env = ss.resize_v0(env, x_size=84, y_size=84)
 # env = ss.frame_stack_v1(env, 3)
 
-model = DQN.load("evac_policy_1")
+model = DQN.load("evac_policy_15")
+model2 = DQN.load("evac_policy_5")
 
 all_steps = []
 all_percent_exit = []
@@ -77,7 +78,10 @@ for i in range(30):
     percent_exited = 0
     for agent in env.agent_iter():
         obs, reward, done, info = env.last()
-        act = model.predict(obs, deterministic=True)[0] if not done else None
+        if (steps < 100000):
+            act = model.predict(obs, deterministic=True)[0] if not done else None
+        else:
+            act = model2.predict(obs, deterministic=True)[0] if not done else None
         env.step(act)
         # if reward == -1:
             # print(reward, act)
@@ -86,7 +90,7 @@ for i in range(30):
         # time.sleep(0.05)
         if not done:
             steps += 1
-        if all(value for value in env.dones.values()):
+        if all(value for value in env.dones.values()) or next:
             num_dones = 0
             num_dones += list(human_dones.values()).count(True)
             for human_id in human_positions:
@@ -101,6 +105,7 @@ for i in range(30):
                     num_dones += 1
 
             percent_exited = num_dones / len(human_dones) * 100
+            next = False
             break
         # print(human_dones)
         # print(list(human_dones.values()).count(False))
