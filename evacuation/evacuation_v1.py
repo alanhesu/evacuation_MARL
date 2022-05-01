@@ -305,7 +305,7 @@ class Robot:
             w_hum_gathered = 1
 
             w_goal = 1.5
-            w_move_pen = 0.25
+            w_move_pen = 10
 
             human_count = 0
             for r in range(space.shape[0]):
