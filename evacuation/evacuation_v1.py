@@ -440,21 +440,23 @@ class raw_env(AECEnv, EzPickle):
         if agent_id in self.robots:
             agent = self.robots[agent_id]
 
-        self.rewards[agent_id], self.dones[agent_id] = agent.update(action, self.space, self.count_exited)
+        self.rewards[agent_id], self.dones[agent_id] = agent.update(
+            action, self.space, self.count_exited
+        )
         if self.dones[agent_id]:
             self.robot_positions[agent_id] = (-1, -1)
         else:
             self.robot_positions[agent_id] = tuple(agent.position.astype(int))
 
         if all_agents_updated:
-            before_count = self.human_dones.values().count(True)
+            before_count = list(self.human_dones.values()).count(True)
             for human_id in self.humans:
                 if not self.human_dones[human_id]:
                     self.human_dones[human_id] = self.humans[human_id].update(
                         self.space, self.robot_positions
                     )
 
-            after_count = self.human_dones.values().count(True)
+            after_count = list(self.human_dones.values()).count(True)
 
             self.count_exited = after_count - before_count
 
