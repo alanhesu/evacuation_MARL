@@ -18,8 +18,8 @@ log_dir = "./log"
 timesteps = 8e5
 env = evacuation_v1.parallel_env(despawn=False)
 env = ss.black_death_v2(env)
-env = ss.pettingzoo_env_to_vec_env_v0(env)
-env = ss.concat_vec_envs_v0(env, 8, num_cpus=1, base_class="stable_baselines3")
+env = ss.pettingzoo_env_to_vec_env_v1(env)
+env = ss.concat_vec_envs_v1(env, 8, num_cpus=8, base_class="stable_baselines3")
 env = VecMonitor(env, log_dir)
 # model = PPO('MlpPolicy', env, verbose=3, learning_rate=1e-4, n_steps=2048, batch_size=256, tensorboard_log=log_dir)
 model = DQN(
@@ -33,6 +33,6 @@ model = DQN(
     exploration_final_eps=0.1,
 )
 model.learn(total_timesteps=timesteps)
-model.save("evac_policy")
+model.save("p")
 
 print("done")
