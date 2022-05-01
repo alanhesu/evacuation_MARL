@@ -197,19 +197,21 @@ class Robot:
         self.reset(pos, space)
         self.dist_exp = 1
         self.max_dist = np.sqrt(2)
-        self.max_dist_space = np.sqrt(2)*space.shape[0]
+        self.max_dist_space = np.sqrt(2) * space.shape[0]
         self.exits = exits  # store the exits because they never change
 
     def reset(self, pos, space):
         self.position = np.array(pos)
         space[pos] = Objects.ROBOT
         self.prev_dist = get_distance(self.position, np.array([0, 2]))
-        self.prev_hum_dist = np.sqrt(2)*space.shape[0]
+        self.prev_hum_dist = np.sqrt(2) * space.shape[0]
         self.last_act = Directions.STAY
 
     def update(self, action, space, count_exited, human_positions):
         # action = 0-8
         self.last_act = action
+
+        # REWARD FUNCTION
 
         # a bunch of weights so we can write the reward function in one line
         w_exit = 0
@@ -269,7 +271,7 @@ class Robot:
             maxdist_hum = -np.inf
             for pos in human_positions.values():
                 dist = get_distance(pos, self.position)
-                if (dist > maxdist_hum):
+                if dist > maxdist_hum:
                     maxdist_hum = dist
                 if dist < const.COLLECT_DIST:
                     close_dists.append(dist)
@@ -283,7 +285,9 @@ class Robot:
                 R_collect = np.mean(close_dists) / const.COLLECT_DIST
 
             # add distance to farthest human to reward
-            R_delta_hum = (self.max_dist_space - maxdist_hum)/self.max_dist_space - .5
+            R_delta_hum = (
+                self.max_dist_space - maxdist_hum
+            ) / self.max_dist_space - 0.5
             R_delta_hum = np.clip(R_delta_hum, -1, 1)
 
             w_collect = 0
@@ -291,7 +295,7 @@ class Robot:
             w_hum_dist = 0
 
             w_goal = 1
-            w_move_pen = 1
+            w_move_pen = 0
 
         weights = np.array(
             [
@@ -303,14 +307,14 @@ class Robot:
                 w_num_follow,
                 w_goal,
                 w_count_exited,
-                w_hum_dist
+                w_hum_dist,
             ]
         )
 
         weights = weights / (np.sum(weights) + 1e-12)
 
         reward = (
-            + weights[0] * const.EXIT_REWARD
+            +weights[0] * const.EXIT_REWARD
             + weights[1] * const.COLLISION_PENALTY
             + weights[2] * const.WALL_PENALTY
             + weights[3] * const.MOVE_PENALTY
