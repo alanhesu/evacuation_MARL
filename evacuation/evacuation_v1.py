@@ -236,7 +236,7 @@ class Robot:
         if space[tuple(newpos.astype(int))] != Objects.EMPTY:
             # check collision
             if space[tuple(newpos.astype(int))] == Objects.EXIT:
-                w_exit = 0
+                w_exit = 1
                 # print('exit')
                 space[tuple(self.position.astype(int))] = Objects.EMPTY
                 done = True
@@ -251,7 +251,7 @@ class Robot:
             self.position = newpos
 
             if count_exited > 0:
-                w_count_exited = 0
+                w_count_exited = 1
 
             # add distance to goal to reward
             # get the closest exit
@@ -262,7 +262,6 @@ class Robot:
                     mindist = dist
             dist = mindist
             R_goal = (self.prev_dist - dist) / self.max_dist
-            R_goal = 0
             self.prev_dist = dist
 
             # add number of nearby humans and average distance to reward
@@ -289,10 +288,10 @@ class Robot:
 
             w_collect = 0
             w_num_follow = 0
-            w_hum_dist = 1
+            w_hum_dist = 0
 
-            w_goal = 0
-            w_move_pen = 0
+            w_goal = 1
+            w_move_pen = 1
 
         weights = np.array(
             [
@@ -408,10 +407,10 @@ class raw_env(AECEnv, EzPickle):
         # self.space[pos[0]] = Objects.EXIT
         # self.space[pos[1]] = Objects.EXIT
         self.exits = []
-        # self.space[0, 1] = Objects.EXIT
-        # self.exits.append([0, 1])
-        # self.space[0, 2] = Objects.EXIT
-        # self.exits.append([0, 2])
+        self.space[0, 1] = Objects.EXIT
+        self.exits.append([0, 1])
+        self.space[0, 2] = Objects.EXIT
+        self.exits.append([0, 2])
 
         self.space_init = copy.deepcopy(self.space)
 
@@ -659,7 +658,7 @@ class raw_env(AECEnv, EzPickle):
             self.display_screen.blit(scaled_win, (0, 0))
             pg.display.flip()
 
-            return self.human_dones
+            return self.human_dones, self.human_positions, self.exits
 
     def close(self):
         """
