@@ -1,7 +1,6 @@
 import time
 from stable_baselines3.ppo import CnnPolicy
 from stable_baselines3 import PPO, DQN
-from pettingzoo.butterfly import knights_archers_zombies_v9, pistonball_v6
 import supersuit as ss
 import evacuation_v1
 import numpy as np
@@ -11,7 +10,7 @@ env = evacuation_v1.env(despawn=False)
 # env = ss.resize_v0(env, x_size=84, y_size=84)
 # env = ss.frame_stack_v1(env, 3)
 
-model = DQN.load("evac_policy1")
+model = DQN.load("evac_policy10")
 
 all_steps = []
 for i in range(0, 10):

@@ -573,7 +573,7 @@ class raw_env(AECEnv, EzPickle):
                         const.MAP_HEIGHT * const.PIXEL_RESOLUTION,
                     )
                 )
-                self.display_screen = pg.display.set_mode(const.SCREEN_SIZE, display=0)
+                self.display_screen = pg.display.set_mode(const.SCREEN_SIZE, display=1)
 
             res = const.PIXEL_RESOLUTION
             self.screen.fill((255, 255, 255))
