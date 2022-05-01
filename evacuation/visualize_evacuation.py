@@ -15,20 +15,20 @@ def get_next(a):
     next = True
 
 
-def exit(a):
+def run_exit(a):
     global end
     end = True
 
 
 keyboard.on_press_key("n", get_next)
-keyboard.on_press_key("q", exit)
+keyboard.on_press_key("q", run_exit)
 
 env = evacuation_v1.env(despawn=False)
 # env = ss.color_reduction_v0(env, mode='B')
 # env = ss.resize_v0(env, x_size=84, y_size=84)
 # env = ss.frame_stack_v1(env, 3)
 
-model = DQN.load("evac_policy11")
+model = DQN.load("policy_20x20_3b_10p.zip")
 
 all_steps = []
 while not end:
@@ -48,7 +48,7 @@ while not end:
         #     break
         # print(human_dones)
         # print(list(human_dones.values()).count(False))
-        if not list(human_dones.values()).count(False) or next:
+        if not list(human_dones.values()).count(False) or next or end:
             next = False
             break
 
