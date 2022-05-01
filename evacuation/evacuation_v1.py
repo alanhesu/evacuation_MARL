@@ -224,8 +224,6 @@ class Robot:
         w_goal = 0
         w_count_exited = 0
         w_hum_dist = 0
-        w_hum_gathered = 0
-        w_all_exited = 0
 
         newpos = np.zeros(self.position.shape)
         done = False
@@ -235,8 +233,6 @@ class Robot:
         R_collect = 0
         R_num_follow = 0
         R_delta_hum = 0
-        humans_gathered = 0
-        R_all_exited = 100
         if action == None:
             return 0, True
 
@@ -282,10 +278,6 @@ class Robot:
                     close_dists.append(dist)
             num_humans = len(close_dists)
 
-            # humans gathered
-            humans_gathered = num_humans - self.prev_hum_count
-            self.prev_hum_count = num_humans
-
             if num_humans == 0:
                 R_num_follow = 0
                 R_collect = 0
@@ -302,18 +294,9 @@ class Robot:
             w_collect = 0
             w_num_follow = 0
             w_hum_dist = 0
-            w_hum_gathered = 1
 
-            w_goal = 1.5
-            w_move_pen = 10
-
-            human_count = 0
-            for r in range(space.shape[0]):
-                for c in range(space.shape[1]):
-                    if space[r][c] == Objects.PERSON:
-                        human_count += 1
-            if human_count == 0:
-                w_all_exited = 1
+            w_goal = 1
+            w_move_pen = 0
 
         weights = np.array(
             [
@@ -326,8 +309,6 @@ class Robot:
                 w_goal,
                 w_count_exited,
                 w_hum_dist,
-                w_hum_gathered,
-                w_all_exited,
             ]
         )
 
@@ -343,8 +324,6 @@ class Robot:
             + weights[6] * R_goal
             + weights[7] * count_exited
             + weights[8] * R_delta_hum
-            + weights[9] * humans_gathered
-            + weights[10] * R_all_exited
         )
 
         # reward = np.clip(reward, -1, 1)
