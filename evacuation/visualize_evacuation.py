@@ -72,7 +72,7 @@ model = DQN.load("evac_policy_3.zip")
 
 all_steps = []
 all_percent_exit = []
-for i in range(30):
+for i in range(100):
     env.reset()
     steps = 0
     percent_exited = 0
@@ -83,8 +83,8 @@ for i in range(30):
         # if reward == -1:
         # print(reward, act)
         human_dones, human_positions, exits = env.render(mode="none")
+        # time.sleep(0.01)
         space = env.state()
-        # time.sleep(0.05)
         if not done:
             steps += 1
         if all(value for value in env.dones.values()):
@@ -130,4 +130,6 @@ for i in range(30):
 
 print("average steps: {}".format(np.mean(all_steps)))
 print("average percent exited: {}".format(np.mean(all_percent_exit)))
+print("std steps: {}".format(np.std(all_steps)))
+print("std percent exited: {}".format(np.std(all_percent_exit)))
 print("done")
