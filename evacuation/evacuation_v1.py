@@ -578,6 +578,8 @@ class raw_env(AECEnv, EzPickle):
             self.display_screen.blit(scaled_win, (0, 0))
             pg.display.flip()
 
+            return self.human_dones
+
     def close(self):
         """
         Close should release any graphical displays, subprocesses, network connections
