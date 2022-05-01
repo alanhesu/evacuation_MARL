@@ -28,10 +28,10 @@ env = evacuation_v1.env(despawn=False)
 # env = ss.resize_v0(env, x_size=84, y_size=84)
 # env = ss.frame_stack_v1(env, 3)
 
-model = DQN.load("policy_20x20_3b_10p.zip")
+model = DQN.load("evac_policy_1.zip")
 
 all_steps = []
-while not end:
+for i in range(30):
     env.reset()
     steps = 0
     for agent in env.agent_iter():
