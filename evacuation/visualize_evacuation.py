@@ -4,16 +4,34 @@ from stable_baselines3 import PPO, DQN
 import supersuit as ss
 import evacuation_v1
 import numpy as np
+import keyboard
+
+next = False
+end = False
+
+
+def get_next(a):
+    global next
+    next = True
+
+
+def exit(a):
+    global end
+    end = True
+
+
+keyboard.on_press_key("n", get_next)
+keyboard.on_press_key("q", exit)
 
 env = evacuation_v1.env(despawn=False)
 # env = ss.color_reduction_v0(env, mode='B')
 # env = ss.resize_v0(env, x_size=84, y_size=84)
 # env = ss.frame_stack_v1(env, 3)
 
-model = DQN.load("evac_policy10")
+model = DQN.load("evac_policy11")
 
 all_steps = []
-for i in range(0, 10):
+while not end:
     env.reset()
     steps = 0
     for agent in env.agent_iter():
@@ -30,7 +48,8 @@ for i in range(0, 10):
         #     break
         # print(human_dones)
         # print(list(human_dones.values()).count(False))
-        if not list(human_dones.values()).count(False):
+        if not list(human_dones.values()).count(False) or next:
+            next = False
             break
 
     all_steps.append(steps)
@@ -40,6 +59,7 @@ for i in range(0, 10):
     print(f"Percent Exited: {percent_exited}")
     print(f"Steps: {steps}")
     print("-------------------------------------")
+
 
 print("average steps: {}".format(np.mean(all_steps)))
 print("done")
