@@ -28,7 +28,7 @@ env = evacuation_v1.env(despawn=False)
 # env = ss.resize_v0(env, x_size=84, y_size=84)
 # env = ss.frame_stack_v1(env, 3)
 
-model = DQN.load("evac_policy_1.zip")
+model = DQN.load("evac_policy_3.zip")
 
 all_steps = []
 for i in range(30):
@@ -41,7 +41,7 @@ for i in range(30):
         if reward == -1:
             print(reward, act)
         human_dones = env.render()
-        time.sleep(0.05)
+        # time.sleep(0.05)
         if not done:
             steps += 1
         # if all(value for value in env.dones.values()):
@@ -60,6 +60,8 @@ for i in range(30):
     print(f"Steps: {steps}")
     print("-------------------------------------")
 
+    if end:
+        break
 
 print("average steps: {}".format(np.mean(all_steps)))
 print("done")
