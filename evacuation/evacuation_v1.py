@@ -407,10 +407,15 @@ class raw_env(AECEnv, EzPickle):
         # self.space[pos[0]] = Objects.EXIT
         # self.space[pos[1]] = Objects.EXIT
         self.exits = []
-        self.space[0, 1] = Objects.EXIT
-        self.exits.append([0, 1])
-        self.space[0, 2] = Objects.EXIT
-        self.exits.append([0, 2])
+        if (const.NUM_EXITS >= 1):
+            self.exits.append([0, 1])
+            self.exits.append([0, 2])
+        if (const.NUM_EXITS >= 2):
+            self.exits.append([const.MAP_HEIGHT-1, const.MAP_WIDTH-3])
+            self.exits.append([const.MAP_HEIGHT-1, const.MAP_WIDTH-2])
+
+        for ex in self.exits:
+            self.space[tuple(ex)] = Objects.EXIT
 
         self.space_init = copy.deepcopy(self.space)
 
