@@ -250,6 +250,17 @@ class Robot:
             if count_exited > 0:
                 w_count_exited = 0
 
+            # add distance to goal to reward
+            # get the closest exit
+            mindist = np.inf
+            for ex in self.exits:
+                dist = get_distance(self.position, ex)
+                if dist < mindist:
+                    mindist = dist
+            dist = mindist
+            R_goal = (self.prev_dist - dist) / self.max_dist
+            self.prev_dist = dist
+
             # add number of nearby humans and average distance to reward
             close_dists = []
             for pos in human_positions.values():
@@ -265,7 +276,7 @@ class Robot:
                 R_num_follow = num_humans / len(human_positions) + 1e-12
                 R_collect = np.mean(close_dists) / const.COLLECT_DIST
 
-            w_collect = 1
+            w_collect = .1
             w_num_follow = 1
 
             w_goal = 0
