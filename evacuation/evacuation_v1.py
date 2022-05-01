@@ -297,7 +297,7 @@ class Robot:
             w_hum_dist = 0
 
             w_goal = 1
-            w_move_pen = 0
+            w_move_pen = 1
 
         weights = np.array(
             [
@@ -343,7 +343,9 @@ parallel_env = parallel_wrapper_fn(env)
 
 
 class raw_env(AECEnv, EzPickle):
-    def __init__(self, despawn=True, max_cycles=const.MAX_CYCLES, rand_exit=const.RANDOM_EXIT):
+    def __init__(
+        self, despawn=True, max_cycles=const.MAX_CYCLES, rand_exit=const.RANDOM_EXIT
+    ):
         EzPickle.__init__(self, despawn, max_cycles, rand_exit)
 
         pg.init()
@@ -542,20 +544,23 @@ class raw_env(AECEnv, EzPickle):
         # generate exits
         num = 0
         self.exits = []
-        if (self.rand_exit):
+        if self.rand_exit:
             while num < const.NUM_EXITS:
                 pos = self._randexit()
-                if (self.space[pos[0]] != Objects.EXIT or self.space[pos[1]] != Objects.EXIT):
+                if (
+                    self.space[pos[0]] != Objects.EXIT
+                    or self.space[pos[1]] != Objects.EXIT
+                ):
                     num += 1
                     self.exits.append([pos[0][0], pos[0][1]])
                     self.exits.append([pos[1][0], pos[1][1]])
         else:
-            if (const.NUM_EXITS >= 1):
+            if const.NUM_EXITS >= 1:
                 self.exits.append([0, 1])
                 self.exits.append([0, 2])
-            if (const.NUM_EXITS >= 2):
-                self.exits.append([const.MAP_HEIGHT-1, const.MAP_WIDTH-3])
-                self.exits.append([const.MAP_HEIGHT-1, const.MAP_WIDTH-2])
+            if const.NUM_EXITS >= 2:
+                self.exits.append([const.MAP_HEIGHT - 1, const.MAP_WIDTH - 3])
+                self.exits.append([const.MAP_HEIGHT - 1, const.MAP_WIDTH - 2])
 
         for ex in self.exits:
             self.space[tuple(ex)] = Objects.EXIT
@@ -725,6 +730,7 @@ class raw_env(AECEnv, EzPickle):
             pos = [(val - 1, const.MAP_WIDTH - 1), (val, const.MAP_WIDTH - 1)]
 
         return pos
+
 
 def get_distance(p1, p2):
     return np.sqrt(np.power(p2[0] - p1[0], 2) + np.power(p2[1] - p1[1], 2))
