@@ -326,7 +326,7 @@ class Robot:
             + weights[8] * R_delta_hum
         )
 
-        # reward = np.clip(reward, -1, 1)
+        reward = np.clip(reward, -1, 1)
 
         return reward, done
 
