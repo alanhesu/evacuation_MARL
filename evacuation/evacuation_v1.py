@@ -233,7 +233,7 @@ class Robot:
         if space[tuple(newpos.astype(int))] != Objects.EMPTY:
             # check collision
             if space[tuple(newpos.astype(int))] == Objects.EXIT:
-                w_exit = 1
+                w_exit = 0
                 # print('exit')
                 space[tuple(self.position.astype(int))] = Objects.EMPTY
                 done = True
@@ -248,7 +248,7 @@ class Robot:
             self.position = newpos
 
             if count_exited > 0:
-                w_count_exited = 1
+                w_count_exited = 0
 
             # add number of nearby humans and average distance to reward
             close_dists = []
@@ -265,11 +265,11 @@ class Robot:
                 R_num_follow = num_humans / len(human_positions) + 1e-12
                 R_collect = np.mean(close_dists) / const.COLLECT_DIST
 
-            w_collect = 0
-            w_num_follow = 0
+            w_collect = 1
+            w_num_follow = 1
 
             w_goal = 0
-            w_move_pen = 0.1
+            w_move_pen = 1
 
         weights = np.array(
             [
@@ -285,7 +285,7 @@ class Robot:
             ]
         )
 
-        weights = weights / np.sum(weights)
+        weights = weights / (np.sum(weights) + 1e-12)
 
         reward = (
             weights[0] * const.OOB_PENALTY
@@ -331,7 +331,6 @@ class raw_env(AECEnv, EzPickle):
             "render_modes": ["human"],
             "name": "evacuation_v1",
             "is_parallelizable": True,
-            "render_fps": const.FPS,
         }
 
         self.state_space = spaces.Box(

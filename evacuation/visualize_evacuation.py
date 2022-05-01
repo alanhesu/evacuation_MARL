@@ -11,7 +11,7 @@ env = evacuation_v1.env(despawn=False)
 # env = ss.resize_v0(env, x_size=84, y_size=84)
 # env = ss.frame_stack_v1(env, 3)
 
-model = DQN.load("evac_policy1")
+model = DQN.load("evac_policy5")
 
 all_steps = []
 for i in range(0, 10):
@@ -21,8 +21,8 @@ for i in range(0, 10):
         obs, reward, done, info = env.last()
         act = model.predict(obs, deterministic=True)[0] if not done else None
         env.step(act)
-        if reward == -1:
-            print(reward, act)
+        # if reward == -1:
+            # print(reward, act)
         human_dones = env.render()
         time.sleep(0.05)
         if not done:
