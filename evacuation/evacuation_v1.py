@@ -302,7 +302,7 @@ class Robot:
             w_hum_dist = 0
             w_hum_gathered = 1
 
-            w_goal = 1
+            w_goal = 1.5
             w_move_pen = 0.25
 
         weights = np.array(
