@@ -67,7 +67,7 @@ env = evacuation_v1.env(despawn=False)
 # env = ss.resize_v0(env, x_size=84, y_size=84)
 # env = ss.frame_stack_v1(env, 3)
 
-model = DQN.load("evac_policy2")
+model = DQN.load("evac_policy_1")
 
 all_steps = []
 all_percent_exit = []
@@ -123,4 +123,6 @@ for i in range(30):
 
 print("average steps: {}".format(np.mean(all_steps)))
 print("average percent exited: {}".format(np.mean(all_percent_exit)))
+print("std steps: {}".format(np.std(all_steps)))
+print("std percent exited: {}".format(np.std(all_percent_exit)))
 print("done")
