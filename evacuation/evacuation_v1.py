@@ -254,34 +254,38 @@ class Robot:
             close_dists = []
             for pos in human_positions.values():
                 dist = get_distance(pos, self.position)
-                if (dist < const.COLLECT_DIST):
+                if dist < const.COLLECT_DIST:
                     close_dists.append(dist)
             num_humans = len(close_dists)
 
-            if (num_humans == 0):
+            if num_humans == 0:
                 R_num_follow = 0
                 R_collect = 0
             else:
-                R_num_follow = num_humans/len(human_positions)+1e-12
-                R_collect = np.mean(close_dists)/const.COLLECT_DIST
+                R_num_follow = num_humans / len(human_positions) + 1e-12
+                R_collect = np.mean(close_dists) / const.COLLECT_DIST
 
-            w_collect = 1
-            w_num_follow = 1
+            w_collect = 0
+            w_num_follow = 0
 
             w_goal = 0
-            w_move_pen = .1
+            w_move_pen = 0.1
 
-        weights = np.array([w_oob,
-                            w_exit,
-                            w_collide,
-                            w_wall,
-                            w_move_pen,
-                            w_collect,
-                            w_num_follow,
-                            w_goal,
-                            w_count_exited])
+        weights = np.array(
+            [
+                w_oob,
+                w_exit,
+                w_collide,
+                w_wall,
+                w_move_pen,
+                w_collect,
+                w_num_follow,
+                w_goal,
+                w_count_exited,
+            ]
+        )
 
-        weights = weights/np.sum(weights)
+        weights = weights / np.sum(weights)
 
         reward = (
             weights[0] * const.OOB_PENALTY
