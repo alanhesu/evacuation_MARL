@@ -197,12 +197,14 @@ class Robot:
         self.reset(pos, space)
         self.dist_exp = 1
         self.max_dist = np.sqrt(2)
+        self.max_dist_space = np.sqrt(2)*space.shape[0]
         self.exits = exits  # store the exits because they never change
 
     def reset(self, pos, space):
         self.position = np.array(pos)
         space[pos] = Objects.ROBOT
         self.prev_dist = get_distance(self.position, np.array([0, 2]))
+        self.prev_hum_dist = np.sqrt(2)*space.shape[0]
         self.last_act = Directions.STAY
 
     def update(self, action, space, count_exited, human_positions):
@@ -218,6 +220,7 @@ class Robot:
         w_num_follow = 0
         w_goal = 0
         w_count_exited = 0
+        w_hum_dist = 0
 
         newpos = np.zeros(self.position.shape)
         done = False
@@ -226,6 +229,7 @@ class Robot:
         R_goal = 0
         R_collect = 0
         R_num_follow = 0
+        R_delta_hum = 0
         if action == None:
             return 0, True
 
@@ -249,10 +253,24 @@ class Robot:
             if count_exited > 0:
                 w_count_exited = 1
 
+            # add distance to goal to reward
+            # get the closest exit
+            mindist = np.inf
+            for ex in self.exits:
+                dist = get_distance(self.position, ex)
+                if dist < mindist:
+                    mindist = dist
+            dist = mindist
+            R_goal = (self.prev_dist - dist) / self.max_dist
+            self.prev_dist = dist
+
             # add number of nearby humans and average distance to reward
             close_dists = []
+            maxdist_hum = -np.inf
             for pos in human_positions.values():
                 dist = get_distance(pos, self.position)
+                if (dist > maxdist_hum):
+                    maxdist_hum = dist
                 if dist < const.COLLECT_DIST:
                     close_dists.append(dist)
             num_humans = len(close_dists)
@@ -264,11 +282,16 @@ class Robot:
                 R_num_follow = num_humans / len(human_positions) + 1e-12
                 R_collect = np.mean(close_dists) / const.COLLECT_DIST
 
+            # add distance to farthest human to reward
+            R_delta_hum = (self.max_dist_space - maxdist_hum)/self.max_dist_space - .5
+            R_delta_hum = np.clip(R_delta_hum, -1, 1)
+
             w_collect = 0
             w_num_follow = 0
+            w_hum_dist = 0
 
-            w_goal = 0
-            w_move_pen = 0.1
+            w_goal = 1
+            w_move_pen = 1
 
         weights = np.array(
             [
@@ -280,13 +303,14 @@ class Robot:
                 w_num_follow,
                 w_goal,
                 w_count_exited,
+                w_hum_dist
             ]
         )
 
-        weights = weights / np.sum(weights)
+        weights = weights / (np.sum(weights) + 1e-12)
 
         reward = (
-            +weights[0] * const.EXIT_REWARD
+            + weights[0] * const.EXIT_REWARD
             + weights[1] * const.COLLISION_PENALTY
             + weights[2] * const.WALL_PENALTY
             + weights[3] * const.MOVE_PENALTY
@@ -294,6 +318,7 @@ class Robot:
             + weights[5] * R_num_follow
             + weights[6] * R_goal
             + weights[7] * count_exited
+            + weights[8] * R_delta_hum
         )
 
         reward = np.clip(reward, -1, 1)
@@ -325,7 +350,7 @@ class raw_env(AECEnv, EzPickle):
         self.closed = False
 
         self.metadata = {
-            "render_modes": ["human"],
+            "render_modes": ["human", "none"],
             "name": "evacuation_v1",
             "is_parallelizable": True,
         }
@@ -633,7 +658,7 @@ class raw_env(AECEnv, EzPickle):
             self.display_screen.blit(scaled_win, (0, 0))
             pg.display.flip()
 
-            return self.human_dones
+        return self.human_dones, self.human_positions, self.exits
 
     def close(self):
         """
