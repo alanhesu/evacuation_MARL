@@ -234,6 +234,7 @@ class Robot:
         R_collect = 0
         R_num_follow = 0
         R_delta_hum = 0
+        humans_gathered = 0
         if action == None:
             return 0, True
 
