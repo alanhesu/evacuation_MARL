@@ -206,7 +206,6 @@ class Robot:
         self.prev_dist = get_distance(self.position, np.array([0, 2]))
         self.prev_hum_dist = np.sqrt(2) * space.shape[0]
         self.last_act = Directions.STAY
-        self.prev_hum_count = 0
 
     def update(self, action, space, count_exited, human_positions):
         # action = 0-8
@@ -315,7 +314,7 @@ class Robot:
         weights = weights / (np.sum(weights) + 1e-12)
 
         reward = (
-            weights[0] * const.EXIT_REWARD
+            +weights[0] * const.EXIT_REWARD
             + weights[1] * const.COLLISION_PENALTY
             + weights[2] * const.WALL_PENALTY
             + weights[3] * const.MOVE_PENALTY
