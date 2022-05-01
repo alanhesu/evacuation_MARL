@@ -10,6 +10,41 @@ import constants as const
 def get_distance(p1, p2):
     return np.sqrt(np.power(p2[0] - p1[0], 2) + np.power(p2[1] - p1[1], 2))
 
+def check_los(p1, p2, space):
+    failure = False
+    i, j = p2
+
+    # Get line from person to robot (idx 0 is y, idx 1 is x)
+    m = ( p2[0] - p1[0]) / (
+         p2[1] - p1[1] + 1e-12
+    )
+    b =  p2[0] - m *  p2[1]
+
+    a = -m
+    c = -b
+    b = 1
+
+    for k in range(
+        min([ p2[0], p1[0]]),
+        max([ p2[0], p1[0]]) + 1,
+    ):
+        for l in range(
+            min([ p2[1], p1[1]]),
+            max([ p2[1], p1[1]]) + 1,
+        ):
+            if space[k][l] == 1:
+                d = abs(a * l + b * k + c) / ((a ** 2 + b ** 2) ** 0.5)
+
+                if d < (2 ** 0.5 / 2 - 0.01):
+                    failure = True
+                    break
+            if failure:
+                break
+        if failure:
+            break
+
+    return not failure
+
 next = False
 end = False
 
@@ -46,7 +81,8 @@ for i in range(30):
         env.step(act)
         # if reward == -1:
             # print(reward, act)
-        human_dones, human_positions, exits = env.render()
+        human_dones, human_positions, exits = env.render(mode='none')
+        space = env.state()
         # time.sleep(0.05)
         if not done:
             steps += 1
@@ -58,7 +94,7 @@ for i in range(30):
                     continue
                 near_exit = False
                 for ex in exits:
-                    if (get_distance(ex, human_positions[human_id]) <= const.HUMAN_VISION):
+                    if (get_distance(ex, human_positions[human_id]) <= const.HUMAN_VISION and check_los(ex, human_positions[human_id], space)):
                         near_exit = True
 
                 if (near_exit):

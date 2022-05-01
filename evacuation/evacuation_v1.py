@@ -350,7 +350,7 @@ class raw_env(AECEnv, EzPickle):
         self.closed = False
 
         self.metadata = {
-            "render_modes": ["human"],
+            "render_modes": ["human", "none"],
             "name": "evacuation_v1",
             "is_parallelizable": True,
         }
@@ -658,7 +658,7 @@ class raw_env(AECEnv, EzPickle):
             self.display_screen.blit(scaled_win, (0, 0))
             pg.display.flip()
 
-            return self.human_dones, self.human_positions, self.exits
+        return self.human_dones, self.human_positions, self.exits
 
     def close(self):
         """
