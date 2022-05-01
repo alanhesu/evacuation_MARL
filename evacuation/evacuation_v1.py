@@ -205,7 +205,7 @@ class Robot:
         self.prev_dist = get_distance(self.position, np.array([0, 2]))
         self.last_act = Directions.STAY
 
-    def update(self, action, space):
+    def update(self, action, space, count_exited):
         # action = 0-8
         self.last_act = action
 
@@ -216,14 +216,7 @@ class Robot:
         if action == None:
             return 0, True
 
-        if (
-            np.min(newpos) < 0
-            or newpos[0] >= const.MAP_HEIGHT
-            or newpos[1] >= const.MAP_WIDTH
-        ):
-            # check out of bounds
-            reward = const.OOB_PENALTY
-        elif space[tuple(newpos.astype(int))] != Objects.EMPTY:
+        if space[tuple(newpos.astype(int))] != Objects.EMPTY:
             # check collision
             if space[tuple(newpos.astype(int))] == Objects.EXIT:
                 reward = const.EXIT_REWARD
@@ -240,18 +233,22 @@ class Robot:
             space[tuple(newpos.astype(int))] = Objects.ROBOT
             self.position = newpos
 
-            # add distance to goal to reward
-            # get the closest exit
-            mindist = np.inf
-            for ex in self.exits:
-                dist = get_distance(self.position, ex)
-                if dist < mindist:
-                    mindist = dist
-            dist = mindist
-            R_goal = (self.prev_dist - dist) / self.max_dist
-            self.prev_dist = dist
-            reward += R_goal
             reward += const.MOVE_PENALTY
+            reward += count_exited
+            reward = reward if reward < 1 else 1
+
+            # # add distance to goal to reward
+            # # get the closest exit
+            # mindist = np.inf
+            # for ex in self.exits:
+            #     dist = get_distance(self.position, ex)
+            #     if dist < mindist:
+            #         mindist = dist
+            # dist = mindist
+            # R_goal = (self.prev_dist - dist) / self.max_dist
+            # self.prev_dist = dist
+            # reward += R_goal
+            # reward += const.MOVE_PENALTY
 
         return reward, done
 
@@ -443,18 +440,23 @@ class raw_env(AECEnv, EzPickle):
         if agent_id in self.robots:
             agent = self.robots[agent_id]
 
-        self.rewards[agent_id], self.dones[agent_id] = agent.update(action, self.space)
+        self.rewards[agent_id], self.dones[agent_id] = agent.update(action, self.space, self.count_exited)
         if self.dones[agent_id]:
             self.robot_positions[agent_id] = (-1, -1)
         else:
             self.robot_positions[agent_id] = tuple(agent.position.astype(int))
 
         if all_agents_updated:
+            before_count = self.human_dones.values().count(True)
             for human_id in self.humans:
                 if not self.human_dones[human_id]:
                     self.human_dones[human_id] = self.humans[human_id].update(
                         self.space, self.robot_positions
                     )
+
+            after_count = self.human_dones.values().count(True)
+
+            self.count_exited = after_count - before_count
 
         self.frame += 1
         if self.frame == self.max_cycles:
@@ -473,6 +475,8 @@ class raw_env(AECEnv, EzPickle):
         # print('reset')
         self.screen = pg.Surface(const.SCREEN_SIZE)
         self.done = False
+
+        self.count_exited = 0
 
         self.space = copy.deepcopy(self.space_init)
 
