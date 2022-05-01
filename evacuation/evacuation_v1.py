@@ -205,7 +205,7 @@ class Robot:
         self.prev_dist = get_distance(self.position, np.array([0, 2]))
         self.last_act = Directions.STAY
 
-    def update(self, action, space):
+    def update(self, action, space, human_positions):
         # action = 0-8
         self.last_act = action
 
@@ -216,6 +216,7 @@ class Robot:
         w_wall = 0
         w_move_pen = 0
         w_collect = 0
+        w_num_follow = 0
         w_goal = 0
 
         newpos = np.zeros(self.position.shape)
@@ -224,6 +225,7 @@ class Robot:
         newpos = get_new_pos(action, self.position)
         R_goal = 0
         R_collect = 0
+        R_num_follow = 0
         if action == None:
             return 0, True
 
@@ -262,10 +264,33 @@ class Robot:
             R_goal = (self.prev_dist - dist) / self.max_dist
             self.prev_dist = dist
 
-            # add number of nearby humans to reward
+            # add number of nearby humans and average distance to reward
+            close_dists = []
+            for pos in human_positions.values():
+                dist = get_distance(pos, self.position)
+                if (dist < const.COLLECT_DIST):
+                    close_dists.append(dist)
+            num_humans = len(close_dists)
 
-            w_goal = 1
-            w_move = 1
+            R_num_follow = num_humans/len(human_positions)
+            R_collect = np.mean(close_dists)/const.COLLECT_DIST
+
+            w_collect = 0
+            w_num_follow = 0
+
+            w_goal = .9
+            w_move_pen = .1
+
+        weights = np.array([w_oob,
+                            w_exit,
+                            w_collide,
+                            w_wall,
+                            w_move_pen,
+                            w_collect,
+                            w_num_follow,
+                            w_goal])
+
+        weights = weights/np.sum(weights)
 
         reward = w_oob*const.OOB_PENALTY \
                 + w_exit*const.EXIT_REWARD \
@@ -273,7 +298,13 @@ class Robot:
                 + w_wall*const.WALL_PENALTY \
                 + w_move_pen*const.MOVE_PENALTY \
                 + w_collect*R_collect \
+                + w_num_follow*R_num_follow \
                 + w_goal*R_goal
+
+        print(w_oob + w_exit + w_collide + w_wall + w_move_pen + w_collect + w_num_follow + w_goal)
+        assert(w_oob + w_exit + w_collide + w_wall + w_move_pen + w_collect + w_num_follow + w_goal == 1)
+
+        reward = np.clip(reward, -1, 1)
 
         return reward, done
 
@@ -467,7 +498,7 @@ class raw_env(AECEnv, EzPickle):
         if agent_id in self.robots:
             agent = self.robots[agent_id]
 
-        self.rewards[agent_id], self.dones[agent_id] = agent.update(action, self.space)
+        self.rewards[agent_id], self.dones[agent_id] = agent.update(action, self.space, self.human_positions)
         if self.dones[agent_id]:
             self.robot_positions[agent_id] = (-1, -1)
         else:
@@ -482,6 +513,8 @@ class raw_env(AECEnv, EzPickle):
                     self.human_positions[human_id] = tuple(self.humans[human_id].position.astype(int))
                 else:
                     self.human_positions[human_id] = (-1, -1)
+
+        print(self.human_positions)
 
         self.frame += 1
         if self.frame == self.max_cycles:
