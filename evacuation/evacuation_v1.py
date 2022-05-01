@@ -209,10 +209,21 @@ class Robot:
         # action = 0-8
         self.last_act = action
 
+        # a bunch of weights so we can write the reward function in one line
+        w_oob = 0
+        w_exit = 0
+        w_collide = 0
+        w_wall = 0
+        w_move_pen = 0
+        w_collect = 0
+        w_goal = 0
+
         newpos = np.zeros(self.position.shape)
         done = False
         reward = 0
         newpos = get_new_pos(action, self.position)
+        R_goal = 0
+        R_collect = 0
         if action == None:
             return 0, True
 
@@ -222,18 +233,18 @@ class Robot:
             or newpos[1] >= const.MAP_WIDTH
         ):
             # check out of bounds
-            reward = const.OOB_PENALTY
+            w_oob = 1
         elif space[tuple(newpos.astype(int))] != Objects.EMPTY:
             # check collision
             if space[tuple(newpos.astype(int))] == Objects.EXIT:
-                reward = const.EXIT_REWARD
+                w_exit = 1
                 # print('exit')
                 space[tuple(self.position.astype(int))] = Objects.EMPTY
                 done = True
             elif space[tuple(newpos.astype(int))] == Objects.ROBOT:
-                reward = const.COLLISION_PENALTY
+                w_collide = 1
             else:
-                reward = const.WALL_PENALTY
+                w_wall = 1
         else:
             # move normally
             space[tuple(self.position.astype(int))] = Objects.EMPTY
@@ -250,8 +261,19 @@ class Robot:
             dist = mindist
             R_goal = (self.prev_dist - dist) / self.max_dist
             self.prev_dist = dist
-            reward += R_goal
-            reward += const.MOVE_PENALTY
+
+            # add number of nearby humans to reward
+
+            w_goal = 1
+            w_move = 1
+
+        reward = w_oob*const.OOB_PENALTY \
+                + w_exit*const.EXIT_REWARD \
+                + w_collide*const.COLLISION_PENALTY \
+                + w_wall*const.WALL_PENALTY \
+                + w_move_pen*const.MOVE_PENALTY \
+                + w_collect*R_collect \
+                + w_goal*R_goal
 
         return reward, done
 
@@ -346,14 +368,16 @@ class raw_env(AECEnv, EzPickle):
         self.space_init = copy.deepcopy(self.space)
 
         # generate random positions for each human
-        human_positions = self._randpos(const.NUM_PEOPLE)
+        human_pos = self._randpos(const.NUM_PEOPLE)
 
         # populate an array of humans (these aren't agents)
         self.humans = {}
-        for num, pos in enumerate(human_positions):
+        self.human_positions = {}
+        for num, pos in enumerate(human_pos):
             human = Person(pos, num, self.space, self.exits)
             identifier = f"human_{num}"
             self.humans[identifier] = human
+            self.human_positions[identifier] = pos
 
         # generate random positions for each robot
         robot_pos = self._randpos(const.NUM_ROBOTS)
@@ -455,6 +479,9 @@ class raw_env(AECEnv, EzPickle):
                     self.human_dones[human_id] = self.humans[human_id].update(
                         self.space, self.robot_positions
                     )
+                    self.human_positions[human_id] = tuple(self.humans[human_id].position.astype(int))
+                else:
+                    self.human_positions[human_id] = (-1, -1)
 
         self.frame += 1
         if self.frame == self.max_cycles:
@@ -481,9 +508,10 @@ class raw_env(AECEnv, EzPickle):
         for i, r in enumerate(self.robots.values()):
             r.reset(robot_pos[i], self.space)
 
-        human_positions = self._randpos(const.NUM_PEOPLE)
+        human_pos = self._randpos(const.NUM_PEOPLE)
+        self.human_positions = dict(zip(list(self.humans.keys()), human_pos))
         for i, h in enumerate(self.humans.values()):
-            h.reset(human_positions[i], self.space)
+            h.reset(human_pos[i], self.space)
 
         self.agents = self.possible_agents[:]
         self.humans = self.possible_humans
@@ -512,7 +540,7 @@ class raw_env(AECEnv, EzPickle):
                         const.MAP_HEIGHT * const.PIXEL_RESOLUTION,
                     )
                 )
-                self.display_screen = pg.display.set_mode(const.SCREEN_SIZE, display=1)
+                self.display_screen = pg.display.set_mode(const.SCREEN_SIZE, display=0)
 
             res = const.PIXEL_RESOLUTION
             self.screen.fill((255, 255, 255))
