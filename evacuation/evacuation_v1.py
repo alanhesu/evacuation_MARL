@@ -205,7 +205,7 @@ class Robot:
         self.prev_dist = get_distance(self.position, np.array([0, 2]))
         self.last_act = Directions.STAY
 
-    def update(self, action, space, human_positions):
+    def update(self, action, space, count_exited, human_positions):
         # action = 0-8
         self.last_act = action
 
@@ -218,6 +218,7 @@ class Robot:
         w_collect = 0
         w_num_follow = 0
         w_goal = 0
+        w_count_exited = 0
 
         newpos = np.zeros(self.position.shape)
         done = False
@@ -229,14 +230,7 @@ class Robot:
         if action == None:
             return 0, True
 
-        if (
-            np.min(newpos) < 0
-            or newpos[0] >= const.MAP_HEIGHT
-            or newpos[1] >= const.MAP_WIDTH
-        ):
-            # check out of bounds
-            w_oob = 1
-        elif space[tuple(newpos.astype(int))] != Objects.EMPTY:
+        if space[tuple(newpos.astype(int))] != Objects.EMPTY:
             # check collision
             if space[tuple(newpos.astype(int))] == Objects.EXIT:
                 w_exit = 1
@@ -253,16 +247,9 @@ class Robot:
             space[tuple(newpos.astype(int))] = Objects.ROBOT
             self.position = newpos
 
-            # add distance to goal to reward
-            # get the closest exit
-            mindist = np.inf
-            for ex in self.exits:
-                dist = get_distance(self.position, ex)
-                if dist < mindist:
-                    mindist = dist
-            dist = mindist
-            R_goal = (self.prev_dist - dist) / self.max_dist
-            self.prev_dist = dist
+            w_move_pen = 1
+            if count_exited > 0:
+                w_count_exited = 1
 
             # add number of nearby humans and average distance to reward
             close_dists = []
@@ -288,18 +275,22 @@ class Robot:
                             w_move_pen,
                             w_collect,
                             w_num_follow,
-                            w_goal])
+                            w_goal,
+                            w_count_exited])
 
         weights = weights/np.sum(weights)
 
-        reward = w_oob*const.OOB_PENALTY \
-                + w_exit*const.EXIT_REWARD \
-                + w_collide*const.COLLISION_PENALTY \
-                + w_wall*const.WALL_PENALTY \
-                + w_move_pen*const.MOVE_PENALTY \
-                + w_collect*R_collect \
-                + w_num_follow*R_num_follow \
-                + w_goal*R_goal
+        reward = (
+            w_oob * const.OOB_PENALTY
+            + w_exit * const.EXIT_REWARD
+            + w_collide * const.COLLISION_PENALTY
+            + w_wall * const.WALL_PENALTY
+            + w_move_pen * const.MOVE_PENALTY
+            + w_collect * R_collect
+            + w_num_follow*R_num_follow
+            + w_goal * R_goal
+            + w_count_exited * count_exited
+        )
 
         print(w_oob + w_exit + w_collide + w_wall + w_move_pen + w_collect + w_num_follow + w_goal)
         assert(w_oob + w_exit + w_collide + w_wall + w_move_pen + w_collect + w_num_follow + w_goal == 1)
@@ -498,23 +489,30 @@ class raw_env(AECEnv, EzPickle):
         if agent_id in self.robots:
             agent = self.robots[agent_id]
 
-        self.rewards[agent_id], self.dones[agent_id] = agent.update(action, self.space, self.human_positions)
+        self.rewards[agent_id], self.dones[agent_id] = agent.update(
+            action, self.space, self.count_exited, self.human_positions
+        )
         if self.dones[agent_id]:
             self.robot_positions[agent_id] = (-1, -1)
         else:
             self.robot_positions[agent_id] = tuple(agent.position.astype(int))
 
         if all_agents_updated:
+            before_count = list(self.human_dones.values()).count(True)
             for human_id in self.humans:
                 if not self.human_dones[human_id]:
                     self.human_dones[human_id] = self.humans[human_id].update(
                         self.space, self.robot_positions
                     )
-                    self.human_positions[human_id] = tuple(self.humans[human_id].position.astype(int))
+                    self.human_positions[human_id] = tuple(
+                        self.humans[human_id].position.astype(int)
+                    )
                 else:
                     self.human_positions[human_id] = (-1, -1)
 
-        print(self.human_positions)
+            after_count = list(self.human_dones.values()).count(True)
+
+            self.count_exited = after_count - before_count
 
         self.frame += 1
         if self.frame == self.max_cycles:
@@ -533,6 +531,8 @@ class raw_env(AECEnv, EzPickle):
         # print('reset')
         self.screen = pg.Surface(const.SCREEN_SIZE)
         self.done = False
+
+        self.count_exited = 0
 
         self.space = copy.deepcopy(self.space_init)
 
@@ -632,6 +632,8 @@ class raw_env(AECEnv, EzPickle):
             scaled_win = pg.transform.scale(self.screen, self.display_screen.get_size())
             self.display_screen.blit(scaled_win, (0, 0))
             pg.display.flip()
+
+            return self.human_dones
 
     def close(self):
         """
