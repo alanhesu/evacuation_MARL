@@ -290,12 +290,12 @@ class Robot:
             ) / self.max_dist_space - 0.5
             R_delta_hum = np.clip(R_delta_hum, -1, 1)
 
-            w_collect = 0
-            w_num_follow = 0
+            w_collect = 10
+            w_num_follow = 1
             w_hum_dist = 0
 
             w_goal = 1
-            w_move_pen = 0
+            w_move_pen = 0.0
 
         weights = np.array(
             [
@@ -314,7 +314,7 @@ class Robot:
         weights = weights / (np.sum(weights) + 1e-12)
 
         reward = (
-            +weights[0] * const.EXIT_REWARD
+            weights[0] * const.EXIT_REWARD
             + weights[1] * const.COLLISION_PENALTY
             + weights[2] * const.WALL_PENALTY
             + weights[3] * const.MOVE_PENALTY

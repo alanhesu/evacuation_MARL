@@ -68,7 +68,7 @@ env = evacuation_v1.env(despawn=False)
 # env = ss.resize_v0(env, x_size=84, y_size=84)
 # env = ss.frame_stack_v1(env, 3)
 
-model = DQN.load("evac_policy_3.zip")
+model = DQN.load("evac_policy_10.zip")
 
 all_steps = []
 all_percent_exit = []
@@ -82,8 +82,8 @@ for i in range(100):
         env.step(act)
         # if reward == -1:
         # print(reward, act)
-        human_dones, human_positions, exits = env.render(mode="none")
-        # time.sleep(0.01)
+        human_dones, human_positions, exits = env.render(mode="human")
+        time.sleep(0.01)
         space = env.state()
         if not done:
             steps += 1
