@@ -83,7 +83,7 @@ for i in range(100):
         # if reward == -1:
         # print(reward, act)
         human_dones, human_positions, exits = env.render(mode="none")
-        time.sleep(0.01)
+        # time.sleep(0.01)
         space = env.state()
         if not done:
             steps += 1

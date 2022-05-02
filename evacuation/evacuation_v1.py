@@ -240,14 +240,14 @@ class Robot:
         if space[tuple(newpos.astype(int))] != Objects.EMPTY:
             # check collision
             if space[tuple(newpos.astype(int))] == Objects.EXIT:
-                w_exit = 1
+                w_exit = 0
                 # print('exit')
                 space[tuple(self.position.astype(int))] = Objects.EMPTY
                 done = True
             elif space[tuple(newpos.astype(int))] == Objects.ROBOT:
-                w_collide = 1
+                w_collide = 0
             else:
-                w_wall = 1
+                w_wall = 0
         else:
             # move normally
             space[tuple(self.position.astype(int))] = Objects.EMPTY
@@ -296,8 +296,8 @@ class Robot:
             w_num_follow = 0
             w_hum_dist = 0
 
-            w_goal = 1
-            w_move_pen = 0
+            w_goal = 0
+            w_move_pen = 0.01
 
         weights = np.array(
             [
@@ -327,7 +327,7 @@ class Robot:
             + weights[8] * R_delta_hum
         )
 
-        reward = np.clip(reward, -1, 1)
+        # reward = np.clip(reward, -1, 1)
 
         return reward, done
 
