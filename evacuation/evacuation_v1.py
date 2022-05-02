@@ -304,7 +304,7 @@ class Robot:
 
             w_hum_diff = 1
 
-            w_goal = 0
+            w_goal = 10
             w_move_pen = 0
 
         weights = np.array(
