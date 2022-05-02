@@ -263,7 +263,7 @@ class Robot:
                 if dist < mindist:
                     mindist = dist
             dist = mindist
-            R_goal = (self.prev_dist - dist) / self.max_dist
+            R_goal = (self.prev_dist - dist) / self.max_dist - .25
             self.prev_dist = dist
 
             # add number of nearby humans and average distance to reward
@@ -707,6 +707,7 @@ class raw_env(AECEnv, EzPickle):
     def _randexit(self):
         # randomly generate exit locations
         side = self.rng.randint(4)
+        side = 0 # limit to one wall
         if side == 0:
             val = self.rng.randint(1, const.MAP_WIDTH)
             pos = [(0, val - 1), (0, val)]
