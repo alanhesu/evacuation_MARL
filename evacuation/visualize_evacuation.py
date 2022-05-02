@@ -64,11 +64,8 @@ keyboard.on_press_key("n", get_next)
 keyboard.on_press_key("q", run_exit)
 
 env = evacuation_v1.env(despawn=False, max_cycles=1000)
-# env = ss.color_reduction_v0(env, mode='B')
-# env = ss.resize_v0(env, x_size=84, y_size=84)
-# env = ss.frame_stack_v1(env, 3)
 
-model = DQN.load("evac_policy_101.zip")
+model = DQN.load("evac_policy.zip")
 
 all_steps = []
 all_percent_exit = []
@@ -80,8 +77,6 @@ for i in range(100):
         obs, reward, done, info = env.last()
         act = model.predict(obs, deterministic=True)[0] if not done else None
         env.step(act)
-        # if reward == -1:
-        # print(reward, act)
         human_dones, human_positions, exits = env.render(mode="human")
         time.sleep(0.01)
         space = env.state()
@@ -108,18 +103,12 @@ for i in range(100):
             percent_exited = num_dones / len(human_dones) * 100
             next = False
             break
-        # print(human_dones)
-        # print(list(human_dones.values()).count(False))
         if next or end:
-            # if not list(human_dones.values()).count(False) or next:
-            # next = False
-            # break
             next = False
             break
 
     all_steps.append(steps)
     all_percent_exit.append(percent_exited)
-    # percent_exited = list(human_dones.values()).count(True) / len(human_dones) * 100
 
     print("-------------------------------------")
     print(f"Percent Exited: {percent_exited}")

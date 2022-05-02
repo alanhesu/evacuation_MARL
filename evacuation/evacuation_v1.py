@@ -226,7 +226,6 @@ class Robot:
         w_goal = 0
         w_count_exited = 0
         w_hum_dist = 0
-        w_hum_diff = 0
 
         newpos = np.zeros(self.position.shape)
         done = False
@@ -243,14 +242,14 @@ class Robot:
         if space[tuple(newpos.astype(int))] != Objects.EMPTY:
             # check collision
             if space[tuple(newpos.astype(int))] == Objects.EXIT:
-                w_exit = 0
+                w_exit = 1
                 # print('exit')
                 space[tuple(self.position.astype(int))] = Objects.EMPTY
                 done = True
             elif space[tuple(newpos.astype(int))] == Objects.ROBOT:
-                w_collide = 0
+                w_collide = 1
             else:
-                w_wall = 0
+                w_wall = 1
         else:
             # move normally
             space[tuple(self.position.astype(int))] = Objects.EMPTY
@@ -282,9 +281,6 @@ class Robot:
                     close_dists.append(dist)
             num_humans = len(close_dists)
 
-            hum_diff = self.prev_hum_count - num_humans
-            self.prev_hum_count = num_humans
-
             if num_humans == 0:
                 R_num_follow = -1
                 R_collect = -1
@@ -302,9 +298,7 @@ class Robot:
             w_num_follow = 0
             w_hum_dist = 0
 
-            w_hum_diff = 10
-
-            w_goal = 10
+            w_goal = 1
             w_move_pen = 0
 
         weights = np.array(
@@ -318,7 +312,6 @@ class Robot:
                 w_goal,
                 w_count_exited,
                 w_hum_dist,
-                w_hum_diff,
             ]
         )
 
@@ -334,10 +327,9 @@ class Robot:
             + weights[6] * R_goal
             + weights[7] * count_exited
             + weights[8] * R_delta_hum
-            + weights[9] * hum_diff
         )
 
-        # reward = np.clip(reward, -1, 1)
+        reward = np.clip(reward, -1, 1)
 
         return reward, done
 

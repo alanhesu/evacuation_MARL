@@ -6,16 +6,13 @@ import matplotlib.pyplot as plt
 from stable_baselines3.ppo import CnnPolicy
 from stable_baselines3 import PPO, A2C, DQN
 from stable_baselines3.common.vec_env import VecMonitor
-
-# from pettingzoo.butterfly import knights_archers_zombies_v9, pistonball_v6
 from pettingzoo.utils import average_total_reward
 import supersuit as ss
 import evacuation_v1
 
-# from callbacks import SaveOnBestTrainingRewardCallback
 
 log_dir = "./log"
-timesteps = 8e5
+timesteps = 5e5
 env = evacuation_v1.parallel_env(despawn=False)
 env = ss.black_death_v2(env)
 env = ss.pettingzoo_env_to_vec_env_v1(env)
@@ -33,6 +30,6 @@ model = DQN(
     exploration_final_eps=0.1,
 )
 model.learn(total_timesteps=timesteps)
-model.save("p")
+model.save("evac_policy")
 
 print("done")
