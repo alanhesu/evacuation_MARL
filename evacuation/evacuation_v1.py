@@ -208,6 +208,7 @@ class Robot:
         self.prev_hum_dist = np.sqrt(2) * space.shape[0]
         self.last_act = Directions.STAY
         self.exits = exits  # store the exits because they never change
+        self.prev_hum_count = 0
 
     def update(self, action, space, count_exited, human_positions):
         # action = 0-8
@@ -225,6 +226,7 @@ class Robot:
         w_goal = 0
         w_count_exited = 0
         w_hum_dist = 0
+        w_hum_diff = 0
 
         newpos = np.zeros(self.position.shape)
         done = False
@@ -234,13 +236,14 @@ class Robot:
         R_collect = 0
         R_num_follow = 0
         R_delta_hum = 0
+        hum_diff = 0
         if action == None:
             return 0, True
 
         if space[tuple(newpos.astype(int))] != Objects.EMPTY:
             # check collision
             if space[tuple(newpos.astype(int))] == Objects.EXIT:
-                w_exit = 100
+                w_exit = 0
                 # print('exit')
                 space[tuple(self.position.astype(int))] = Objects.EMPTY
                 done = True
@@ -279,6 +282,9 @@ class Robot:
                     close_dists.append(dist)
             num_humans = len(close_dists)
 
+            hum_diff = self.prev_hum_count - num_humans
+            self.prev_hum_count = num_humans
+
             if num_humans == 0:
                 R_num_follow = -1
                 R_collect = -1
@@ -296,8 +302,10 @@ class Robot:
             w_num_follow = 0
             w_hum_dist = 0
 
+            w_hum_diff = 1
+
             w_goal = 0
-            w_move_pen = 0.01
+            w_move_pen = 0
 
         weights = np.array(
             [
@@ -310,6 +318,7 @@ class Robot:
                 w_goal,
                 w_count_exited,
                 w_hum_dist,
+                w_hum_diff,
             ]
         )
 
@@ -325,6 +334,7 @@ class Robot:
             + weights[6] * R_goal
             + weights[7] * count_exited
             + weights[8] * R_delta_hum
+            + weights[9] * hum_diff
         )
 
         # reward = np.clip(reward, -1, 1)
