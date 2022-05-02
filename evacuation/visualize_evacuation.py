@@ -7,6 +7,10 @@ import numpy as np
 import keyboard
 import constants as const
 
+mode = "human"
+# mode = "none"
+load = "evac_policy.zip"
+
 
 def get_distance(p1, p2):
     return np.sqrt(np.power(p2[0] - p1[0], 2) + np.power(p2[1] - p1[1], 2))
@@ -65,7 +69,7 @@ keyboard.on_press_key("q", run_exit)
 
 env = evacuation_v1.env(despawn=False, max_cycles=1000)
 
-model = DQN.load("evac_policy.zip")
+model = DQN.load(load)
 
 all_steps = []
 all_percent_exit = []
@@ -77,7 +81,7 @@ for i in range(100):
         obs, reward, done, info = env.last()
         act = model.predict(obs, deterministic=True)[0] if not done else None
         env.step(act)
-        human_dones, human_positions, exits = env.render(mode="human")
+        human_dones, human_positions, exits = env.render(mode=mode)
         time.sleep(0.01)
         space = env.state()
         if not done:
