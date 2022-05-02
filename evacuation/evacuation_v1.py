@@ -258,7 +258,7 @@ class Robot:
             self.position = newpos
 
             if count_exited > 0:
-                w_count_exited = 40
+                w_count_exited = 1
 
             # add distance to goal to reward
             # get the closest exit
@@ -302,7 +302,7 @@ class Robot:
             w_num_follow = 0
             w_hum_dist = 0
 
-            w_hum_diff = 20
+            w_hum_diff = 10
 
             w_goal = 10
             w_move_pen = 0
