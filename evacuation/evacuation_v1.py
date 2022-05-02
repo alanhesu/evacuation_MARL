@@ -240,7 +240,7 @@ class Robot:
         if space[tuple(newpos.astype(int))] != Objects.EMPTY:
             # check collision
             if space[tuple(newpos.astype(int))] == Objects.EXIT:
-                w_exit = 10
+                w_exit = 100
                 # print('exit')
                 space[tuple(self.position.astype(int))] = Objects.EMPTY
                 done = True
