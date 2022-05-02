@@ -302,7 +302,7 @@ class Robot:
             w_num_follow = 0
             w_hum_dist = 0
 
-            w_hum_diff = 10
+            w_hum_diff = 20
 
             w_goal = 10
             w_move_pen = 0
