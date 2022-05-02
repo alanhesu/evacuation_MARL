@@ -302,7 +302,7 @@ class Robot:
             w_num_follow = 0
             w_hum_dist = 0
 
-            w_hum_diff = 1
+            w_hum_diff = 5
 
             w_goal = 10
             w_move_pen = 0
@@ -612,7 +612,7 @@ class raw_env(AECEnv, EzPickle):
                         const.MAP_HEIGHT * const.PIXEL_RESOLUTION,
                     )
                 )
-                self.display_screen = pg.display.set_mode(const.SCREEN_SIZE, display=1)
+                self.display_screen = pg.display.set_mode(const.SCREEN_SIZE, display=0)
 
             res = const.PIXEL_RESOLUTION
             self.screen.fill((255, 255, 255))
