@@ -6,7 +6,7 @@ To setup your training environment, run the following commands.
 ```
 git clone https://github.com/alanhesu/evacuation_MARL
 cd evacuation_MARL
-conda env create environment.yml
+conda env create vm_env.yml
 conda activate cs7649_proj
 cd environment
 ```
